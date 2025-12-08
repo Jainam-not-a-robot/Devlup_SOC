@@ -105,11 +105,12 @@ const SnowEffect: React.FC = () => {
       const seed = Date.now() + i * 1000;
       const { trunkLength, branches } = generateSnowflakeConfig(seed);
       const size = randomInt(18, 32); // Bigger snowflakes: 18-32px
-      const delay = random(0, 2);
+      const delay = 0; // Start immediately
       const duration = random(15, 25);
       const startX = random(0, 100);
-      const startY = random(-100, 0);
-      const opacity = random(0.35, 0.65);
+      // Distribute snowflakes throughout viewport height so they appear immediately
+      const startY = random(-100, 100);
+      const opacity = random(0.2, 0.4);
       const rotation = random(0, 360);
       
       return {
@@ -128,7 +129,7 @@ const SnowEffect: React.FC = () => {
   }, []);
 
   return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 1 }}>
+    <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
       {snowflakes.map((snowflake) => (
         <div
           key={snowflake.id}
@@ -142,8 +143,8 @@ const SnowEffect: React.FC = () => {
             animation: `snow-fall ${snowflake.duration}s linear infinite`,
             animationDelay: `${snowflake.delay}s`,
             transform: `rotate(${snowflake.rotation}deg)`,
-            filter: 'drop-shadow(0 0 3px var(--accent-glow))',
-            color: 'rgba(255, 255, 255, 0.95)'
+            filter: 'drop-shadow(0 0 2px var(--accent-glow))',
+            color: 'rgba(255, 255, 255, 0.6)'
           }}
         >
           <svg 

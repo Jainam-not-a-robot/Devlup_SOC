@@ -468,21 +468,21 @@ const Projects = () => {
             {/* Search and filter controls */}
             <div className="flex flex-col md:flex-row gap-2 sm:gap-3">
               {/* Search input */}
-              <div className="relative flex-1">
-                <Search size={16} className="absolute left-3 top-2.5 sm:top-3 text-terminal-dim sm:w-4 sm:h-4" />
+              <div className="relative max-w-md">
+                <Search size={14} className="absolute left-2.5 top-2 text-black" />
                 <input
                   type="text"
                   placeholder="Search projects..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 sm:pl-9 pr-8 sm:pr-10 py-2 sm:py-2.5 w-full text-sm sm:text-base bg-terminal-dim/20 border border-terminal-dim/50 rounded focus:outline-none focus:border-terminal-accent"
+                  className="pl-8 pr-8 py-1.5 w-full text-sm text-black bg-terminal-dim/20 border border-terminal-dim/50 rounded focus:outline-none focus:border-terminal-accent placeholder:text-terminal-dim"
                 />
                 {searchQuery && (
                   <button 
-                    className="absolute right-3 top-2.5 sm:top-3 text-terminal-dim hover:text-terminal-text"
+                    className="absolute right-2.5 top-2 text-terminal-dim hover:text-terminal-text"
                     onClick={() => setSearchQuery('')}
                   >
-                    <X size={16} className="sm:w-4 sm:h-4" />
+                    <X size={14} />
                   </button>
                 )}
               </div>

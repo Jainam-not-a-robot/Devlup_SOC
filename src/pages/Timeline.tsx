@@ -86,18 +86,18 @@ const Timeline = () => {
         },
         {
           id: "woc-landing",
-          title: "Landing Page Public",
-          date: "Till 4th or 5th January",
+          title: "Learning Phase",
+          date: "1st Week of January",
           endDate: "5th January",
-          description: "Public landing page will be available",
+          description: "Contributors learn and research about project and tech stack",
           icon: Rocket,
           status: "upcoming"
         },
         {
           id: "woc-start",
           title: "Project Work Begins",
-          date: "First week of January",
-          description: "Contributors start working on selected projects",
+          date: "1st week of January",
+          description: "Selected contributors start working on projects",
           icon: CheckCircle2,
           status: "upcoming"
         },

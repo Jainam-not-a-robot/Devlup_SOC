@@ -4,6 +4,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import Home from "./pages/Home";
+import Mentors from "./pages/Mentors";
+import Leaderboard from "./pages/Leaderboard";
+import ApplyFormPage from "./pages/ApplyFormPage";
 import Projects from "./pages/Projects";
 import NotFound from "./pages/NotFound";
 import ProjectDetail from "./pages/ProjectDetail";
@@ -34,6 +37,9 @@ const AppContent = () => {
       {/* </div> */}
       <main className="flex-grow relative" >
         <Routes>
+          <Route path="/mentors" element={<Mentors />} />
+          <Route path="/apply/form" element={<ApplyFormPage />} />
+          <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/" element={<Home />} />
           <Route path="/projects" element={<Projects />} />
           <Route path="/projects/ongoing" element={<Projects />} />

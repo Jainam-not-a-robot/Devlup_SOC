@@ -18,6 +18,10 @@ import AnalyticsTracker from "./components/AnalyticsTracker";
 import ShortcutProvider from "./components/ShortcutProvider";
 import SnowEffect from "./components/SnowEffect";
 import { ThemeProvider, useTheme } from "./components/ThemeProvider";
+import Mentors from "./pages/Mentors";
+import FormPage from './pages/form';
+import Issues from "./pages/Issues";
+
 
 const queryClient = new QueryClient();
 
@@ -30,7 +34,7 @@ const AppContent = () => {
     <div className="flex flex-col min-h-screen relative">
       {showSnow && <SnowEffect />}
       {/* <div className="relative" style={{ zIndex: 10 }}> */}
-        <Navbar />
+      <Navbar />
       {/* </div> */}
       <main className="flex-grow relative" >
         <Routes>
@@ -39,11 +43,17 @@ const AppContent = () => {
           <Route path="/projects/ongoing" element={<Projects />} />
           <Route path="/projects/completed" element={<Projects />} />
           <Route path="/projects/archived" element={<Projects />} />
+          <Route path="/projects/issues" element={<Projects />} />
           <Route path="/projects/:projectId" element={<ProjectDetail />} />
           <Route path="/apply" element={<ApplyPage />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/stats" element={<Stats />} />
           <Route path="/timeline" element={<Timeline />} />
+          <Route path="/mentors" element={<Mentors />} />
+          <Route path="/apply/:projectId" element={<ApplyPage />} />
+          <Route path="/apply/form" element={<FormPage />} />
+          <Route path="/issues" element={<Issues />} />
+
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

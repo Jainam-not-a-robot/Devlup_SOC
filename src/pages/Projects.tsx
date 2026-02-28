@@ -5,17 +5,21 @@ import TerminalHeader from '../components/TerminalHeader';
 import RepoSocialPreview from '../components/RepoSocialPreview';
 import { Search, Filter, X, FileText, Github, ExternalLink, Mail, Linkedin } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useGithubIssues } from '../hooks/useGithubIssues';
+import ProjectIssuesPanel from '../components/ProjectIssuesPanel';
+
+
 
 const Projects = () => {
-  const { 
-    projects, 
+  const {
+    projects,
     loading,
     searchQuery,
     setSearchQuery,
     techFilter,
     setTechFilter
   } = useTerminal();
-  
+
   // Get all unique tech stacks
   const allTechStacks = React.useMemo(() => {
     const techSet = new Set<string>();
@@ -30,15 +34,15 @@ const Projects = () => {
   // Filter projects based on search query and tech filter
   const filteredProjects = React.useMemo(() => {
     return projects.filter(project => {
-      const matchesSearch = searchQuery ? 
-        project.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        project.description.toLowerCase().includes(searchQuery.toLowerCase()) : 
+      const matchesSearch = searchQuery ?
+        project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        project.description.toLowerCase().includes(searchQuery.toLowerCase()) :
         true;
-      
-      const matchesTech = techFilter ? 
-        project.techStack.some(tech => tech.toLowerCase() === techFilter.toLowerCase()) : 
+
+      const matchesTech = techFilter ?
+        project.techStack.some(tech => tech.toLowerCase() === techFilter.toLowerCase()) :
         true;
-      
+
       return matchesSearch && matchesTech;
     });
   }, [projects, searchQuery, techFilter]);
@@ -54,11 +58,14 @@ const Projects = () => {
     // parts might be ['projects'] or ['projects','ongoing']
     if (parts[1] === 'ongoing') return 'Ongoing';
     if (parts[1] === 'completed') return 'Completed';
+    if (parts[1] === 'issues') return 'Issues';
     if (parts[1] === 'archived' && showArchived) return 'Archived';
     return 'Ongoing';
   };
+  const [selectedTab, setSelectedTab] = React.useState<
+    'Ongoing' | 'Completed' | 'Issues' | 'Archived'
+  >(getTabFromPath(location.pathname));
 
-  const [selectedTab, setSelectedTab] = React.useState<'Ongoing' | 'Completed' | 'Archived'>(getTabFromPath(location.pathname));
 
   React.useEffect(() => {
     const t = getTabFromPath(location.pathname);
@@ -69,6 +76,7 @@ const Projects = () => {
     return filteredProjects.filter(p => {
       const s = (p.status || '').toLowerCase() || 'completed';
       if (selectedTab.toLowerCase() === 'ongoing') return s === 'ongoing';
+      if (selectedTab === 'Issues') return s === 'issues';
       if (selectedTab.toLowerCase() === 'archived') return s === 'archived';
       return s === 'completed';
     });
@@ -199,7 +207,7 @@ const Projects = () => {
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 mt-2 sm:mt-3 mb-2 sm:mb-3 flex-wrap">
-          {(['Preview','Mentors','Links'] as const).map(tab => (
+          {(['Preview', 'Mentors', 'Links'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setPanel(tab)}
@@ -213,10 +221,10 @@ const Projects = () => {
         <div>
           {panel === 'Preview' && (
             <div>
-                            {project.liveLinks && project.liveLinks.length > 0 ? (
+              {project.liveLinks && project.liveLinks.length > 0 ? (
                 project.liveLinks.map((link, idx) => {
                   const url = link.startsWith('http') ? link : `https://${link}`;
-                  const domain = (() => { try { return new URL(url).hostname; } catch { return link; }})();
+                  const domain = (() => { try { return new URL(url).hostname; } catch { return link; } })();
                   return (
                     <a
                       key={idx}
@@ -305,7 +313,7 @@ const Projects = () => {
                   </div>
                 </div>
               )}
-              
+
               {/* Project Mentors Section */}
               <div>
                 <h3 className="text-base sm:text-lg text-terminal-text mb-2 sm:mb-3">Project Mentors ({mentors.length})</h3>
@@ -331,7 +339,7 @@ const Projects = () => {
           )}
 
           {panel === 'Links' && (
-            
+
             <div className="space-y-2">
               {/* Project documentation */}
               {project.projectDoc ? (
@@ -371,7 +379,7 @@ const Projects = () => {
               {project.liveLinks && project.liveLinks.length > 0 ? (
                 project.liveLinks.map((link, idx) => {
                   const url = link.startsWith('http') ? link : `https://${link}`;
-                  const domain = (() => { try { return new URL(url).hostname; } catch { return link; }})();
+                  const domain = (() => { try { return new URL(url).hostname; } catch { return link; } })();
                   return (
                     <a
                       key={idx}
@@ -451,7 +459,7 @@ const Projects = () => {
             <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-terminal-text mb-2 sm:mb-3">{selectedTab === 'Ongoing' ? 'Live Projects' : selectedTab === 'Completed' ? 'Completed Projects' : 'Archived Projects'}</h1>
             <div className="flex items-center gap-2 flex-wrap mb-2 sm:mb-3">
               {(
-                showArchived ? (['Ongoing','Completed','Archived'] as const) : (['Ongoing','Completed'] as const)
+                showArchived ? (['Ongoing', 'Completed', 'Issues', 'Archived'] as const) : (['Ongoing', 'Completed', 'Issues'] as const)
               ).map(tab => (
                 <button
                   key={tab}
@@ -461,7 +469,7 @@ const Projects = () => {
                 </button>
               ))}
             </div>
-            <p className="text-terminal-dim mt-2 sm:mt-3 text-xs sm:text-sm md:text-base">Use the tabs to switch between Live, Completed and Archived projects.</p>
+            <p className="text-terminal-dim mt-2 sm:mt-3 text-xs sm:text-sm md:text-base">Use the tabs to switch between Live, Completed, Issues and Archived projects.</p>
           </div>
 
           <div className="space-y-4 sm:space-y-6">
@@ -478,7 +486,7 @@ const Projects = () => {
                   className="pl-8 pr-8 py-1.5 w-full text-sm text-black bg-terminal-dim/20 border border-terminal-dim/50 rounded focus:outline-none focus:border-terminal-accent placeholder:text-terminal-dim"
                 />
                 {searchQuery && (
-                  <button 
+                  <button
                     className="absolute right-2.5 top-2 text-terminal-dim hover:text-terminal-text"
                     onClick={() => setSearchQuery('')}
                   >
@@ -486,7 +494,7 @@ const Projects = () => {
                   </button>
                 )}
               </div>
-              
+
               {/* Tech stack filter (disabled for now) */}
               {/**
               <div className="w-full md:w-64">
@@ -503,11 +511,15 @@ const Projects = () => {
               </div>
               **/}
             </div>
-            
+
             {/* Projects list */}
             {loading ? (
               <div className="text-center py-8">
                 <p className="text-terminal-accent">Loading projects...</p>
+              </div>
+            ) : selectedTab === 'Issues' ? (
+              <div className="space-y-4">
+                <ProjectIssuesPanel repoUrl="https://github.com/rougier/scientific-visualization-book" />
               </div>
             ) : projectsForTab.length > 0 ? (
               <div className="space-y-4">
@@ -536,7 +548,7 @@ const Projects = () => {
             ) : (
               <div className="text-center py-8">
                 <p className="text-terminal-error">No {selectedTab} Projects Available! Try Again Later</p>
-                <button 
+                <button
                   className="mt-3 text-terminal-accent hover:underline"
                   onClick={() => {
                     setSearchQuery('');

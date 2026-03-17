@@ -13,11 +13,11 @@ const TerminalHeader: React.FC<TerminalHeaderProps> = ({ title }) => {
   const { setView } = useTerminal();
 
   const handleClose = () => {
-    navigate('/');
+    navigate('/home');
   };
 
   const handleBack = () => {
-    if (location.pathname !== '/') {
+    if (location.pathname !== '/home') {
       navigate(-1);
     } else {
       // If already at home, switch view to terminal if in projects view

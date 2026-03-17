@@ -26,7 +26,7 @@ export function useKeyboardShortcuts() {
   useEffect(() => {
     // Define the navigation shortcuts
     const shortcuts: ShortcutRoute[] = [
-      { key: 'h', route: '/', description: 'Home', altKey: true, focusTerminal: false },
+      { key: 'h', route: '/home', description: 'Home', altKey: true, focusTerminal: false },
       { key: 'p', route: '/projects', description: 'Projects', altKey: true },
       { key: 'a', route: '/apply', description: 'Apply', altKey: true },
       { key: 't', route: '/timeline', description: 'Timeline', altKey: true },

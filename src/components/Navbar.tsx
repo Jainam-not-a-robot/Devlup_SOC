@@ -48,7 +48,7 @@ const Navbar = () => {
   };
 
   const navLinks = [
-    { path: '/', icon: Home, label: 'Home', shortcut: 'Alt+H' },
+    { path: '/home', icon: Home, label: 'Home', shortcut: 'Alt+H' },
     { path: '/projects', icon: Briefcase, label: 'Projects', shortcut: 'Alt+P' },
     { path: '/apply', icon: User, label: 'Apply', shortcut: 'Alt+A' },
     { path: '/timeline', icon: Calendar, label: 'Timeline', shortcut: 'Alt+T' },
@@ -61,7 +61,7 @@ const Navbar = () => {
       <nav className="bg-terminal border-b border-terminal-dim px-4 py-3">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Link to="/" className="flex items-center space-x-2">
+            <Link to="/home" className="flex items-center space-x-2">
               <img 
                 src="/uploads/a04b4cd1-93e6-496f-a36f-bae3a41203d5.png" 
                 alt="DevlUp Labs Logo" 

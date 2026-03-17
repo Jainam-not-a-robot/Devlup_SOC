@@ -1,0 +1,2 @@
+Download the model.glb from here and install it in the current folder
+https://drive.google.com/drive/u/0/folders/12eXXFyLfRg4WrNkuRe669YpfJNtpEaWX

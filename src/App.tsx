@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { useEffect } from "react";
 import Home from "./pages/Home";
 import Projects from "./pages/Projects";
 import NotFound from "./pages/NotFound";
@@ -19,17 +20,26 @@ import ShortcutProvider from "./components/ShortcutProvider";
 import SnowEffect from "./components/SnowEffect";
 import { ThemeProvider, useTheme } from "./components/ThemeProvider";
 import Entry3D from "./pages/Entry3D";
+import EntryLoader from "./pages/EntryLoader";
 
 const queryClient = new QueryClient();
+const LAST_CONTENT_ROUTE_KEY = "devlup:last-content-route";
 
 const AppContent = () => {
   const location = useLocation();
-  const isEntryPage = location.pathname === "/";
+  const isEntryPage = location.pathname === "/" || location.pathname === "/entry";
   const isProjectDetailPage =
   location.pathname.startsWith("/projects/") &&
   location.pathname !== "/projects";
 
   const { showSnow } = useTheme();
+
+  useEffect(() => {
+    if (isEntryPage) return;
+
+    const route = `${location.pathname}${location.search}${location.hash}`;
+    window.sessionStorage.setItem(LAST_CONTENT_ROUTE_KEY, route);
+  }, [isEntryPage, location.hash, location.pathname, location.search]);
 
   return (
     <div className="flex flex-col min-h-screen relative">
@@ -40,7 +50,8 @@ const AppContent = () => {
       {/* </div> */}
       <main className="flex-grow relative" >
         <Routes>
-          <Route path="/" element={<Entry3D />} />
+          <Route path="/" element={<EntryLoader />} />
+          <Route path="/entry" element={<Entry3D />} />
           <Route path="/home" element={<Home />} />
           <Route path="/projects" element={<Projects />} />
           <Route path="/projects/ongoing" element={<Projects />} />

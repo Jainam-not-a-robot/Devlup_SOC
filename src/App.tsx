@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import Home from "./pages/Home";
 import Projects from "./pages/Projects";
@@ -21,13 +21,22 @@ import SnowEffect from "./components/SnowEffect";
 import { ThemeProvider, useTheme } from "./components/ThemeProvider";
 import Entry3D from "./pages/Entry3D";
 import EntryLoader from "./pages/EntryLoader";
+import {
+  LAST_CONTENT_ROUTE_KEY,
+  MONITOR_EMBED_QUERY_KEY,
+  MONITOR_EMBED_QUERY_VALUE,
+} from "./constants/navigation";
 
 const queryClient = new QueryClient();
-const LAST_CONTENT_ROUTE_KEY = "devlup:last-content-route";
+const WEBSITE_BACK_EXIT_STATE = "__devlupWebsiteBackExitState";
+const WEBSITE_BACK_TRAP_STATE = "__devlupWebsiteBackTrapState";
 
 const AppContent = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const isEntryPage = location.pathname === "/" || location.pathname === "/entry";
+  const isMonitorEmbed =
+    new URLSearchParams(location.search).get(MONITOR_EMBED_QUERY_KEY) === MONITOR_EMBED_QUERY_VALUE;
   const isProjectDetailPage =
   location.pathname.startsWith("/projects/") &&
   location.pathname !== "/projects";
@@ -35,15 +44,49 @@ const AppContent = () => {
   const { showSnow } = useTheme();
 
   useEffect(() => {
-    if (isEntryPage) return;
+    if (isEntryPage || isMonitorEmbed) return;
 
     const route = `${location.pathname}${location.search}${location.hash}`;
     window.sessionStorage.setItem(LAST_CONTENT_ROUTE_KEY, route);
-  }, [isEntryPage, location.hash, location.pathname, location.search]);
+  }, [isEntryPage, isMonitorEmbed, location.hash, location.pathname, location.search]);
+
+  useEffect(() => {
+    if (isEntryPage || isMonitorEmbed) return;
+
+    const route = `${location.pathname}${location.search}${location.hash}`;
+    const historyState = window.history.state ?? {};
+
+    if (!historyState[WEBSITE_BACK_TRAP_STATE]) {
+      window.history.replaceState(
+        {
+          ...historyState,
+          [WEBSITE_BACK_EXIT_STATE]: true,
+        },
+        "",
+        route,
+      );
+
+      window.history.pushState(
+        {
+          [WEBSITE_BACK_TRAP_STATE]: true,
+        },
+        "",
+        route,
+      );
+    }
+
+    const handlePopState = (event: PopStateEvent) => {
+      if (!event.state?.[WEBSITE_BACK_EXIT_STATE]) return;
+      navigate("/entry", { replace: true });
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [isEntryPage, isMonitorEmbed, location.hash, location.pathname, location.search, navigate]);
 
   return (
     <div className="flex flex-col min-h-screen relative">
-      {showSnow && <SnowEffect />}
+      {showSnow && !isMonitorEmbed && <SnowEffect />}
       {/* <div className="relative" style={{ zIndex: 10 }}> */}
         {!isEntryPage && <Navbar />}
 

@@ -2,7 +2,15 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import { Vector3 } from "three";
 
-export default function Player() {
+type PlayerProps = {
+  constrainPosition?: (position: Vector3) => void;
+  standingHeight?: number;
+};
+
+export default function Player({
+  constrainPosition,
+  standingHeight = 1.6,
+}: PlayerProps) {
   const { camera } = useThree();
   const keys = useRef<Record<string, boolean>>({});
   const velocityRef = useRef(new Vector3(0, 0, 0));
@@ -54,11 +62,13 @@ export default function Player() {
 
     if (velocityRef.current.lengthSq() > 0.0001) {
       bobRef.current += delta * (isRunning ? 10 : 6.5);
-      camera.position.y = 1.6 + Math.sin(bobRef.current) * 0.028;
+      camera.position.y = standingHeight + Math.sin(bobRef.current) * 0.028;
     } else {
       bobRef.current = 0;
-      camera.position.y = 1.6;
+      camera.position.y = standingHeight;
     }
+
+    constrainPosition?.(camera.position);
   });
 
   return null;

@@ -12,7 +12,7 @@ export default function Room({ onMonitorClick }) {
       screenTexture.colorSpace = SRGBColorSpace;
       screenTexture.flipY = false;
       screenTexture.center.set(0.5, 0.5);
-      // no rotation: keep monitor texture upright
+      screenTexture.rotation = Math.PI; // rotate monitor image by 180 degrees
       screenTexture.needsUpdate = true;
     }
 

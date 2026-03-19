@@ -8,6 +8,7 @@ import Room from "../components/room";
 import Player from "../components/Player";
 import Snow from "../components/snow";
 import PortalEnter from "../components/PortalEnter";
+import { Environment } from "@react-three/drei";
 
 export default function Entry3D() {
   const navigate = useNavigate();
@@ -17,9 +18,14 @@ export default function Entry3D() {
   return (
     <div style={{ width: "100vw", height: "100vh", background: "black", position: "relative" }}>
       <Canvas camera={{ position: [0, 1.6, 3], fov: 60 }}>
-        {/* lights */}
-        <ambientLight intensity={0.5} />
-        <directionalLight position={[5, 8, 5]} intensity={1.2} />
+        {/* environment */}
+        <Environment files="/studio.exr" background />
+        {/* moody room lighting */}
+        <ambientLight intensity={0.18} color="#ffffff" />
+        <hemisphereLight intensity={0.15} color="#667788" groundColor="#121212" />
+        <pointLight position={[1.5, 1.2, 0]} intensity={1.2} distance={3.5} color="#ffa97a" />
+        <pointLight position={[-1.4, 1.1, -1.1]} intensity={0.7} distance={3.8} color="#b3c9ff" />
+        <spotLight position={[0, 2.5, 2.5]} intensity={0.6} angle={0.65} penumbra={0.6} castShadow color="#ffffff" />
         <Room
           onMonitorClick={(point) => {
             if (isEntering) return;
@@ -43,7 +49,7 @@ export default function Entry3D() {
         {!isEntering && <Player />}
 
         {/* mouse look */}
-        {!isEntering && <PointerLockControls pointerSpeed={0.2} />}
+        {!isEntering && <PointerLockControls pointerSpeed={0.08} />}
       </Canvas>
 
 

@@ -2,7 +2,15 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import { Vector3, MathUtils } from "three";
 
-export default function Player() {
+type PlayerProps = {
+  constrainPosition?: (position: Vector3) => void;
+  standingHeight?: number;
+};
+
+export default function Player({
+  constrainPosition,
+  standingHeight = 1.6,
+}: PlayerProps) {
   const { camera } = useThree();
   const keys = useRef<Record<string, boolean>>({});
   const velocityRef = useRef(new Vector3(0, 0, 0));
@@ -50,15 +58,14 @@ export default function Player() {
 
     const targetY = velocityRef.current.lengthSq() > 0.0001 ? 1.6 + Math.sin(bobRef.current) * 0.028 : 1.6;
     if (velocityRef.current.lengthSq() > 0.0001) {
-      bobRef.current += delta * (isRunning ? 9 : 6);
+      bobRef.current += delta * (isRunning ? 10 : 6.5);
+      camera.position.y = standingHeight + Math.sin(bobRef.current) * 0.028;
+    } else {
+      bobRef.current = 0;
+      camera.position.y = standingHeight;
     }
-    camera.position.y = MathUtils.lerp(camera.position.y, targetY, Math.min(1, delta * 10));
 
-    // camera limiters: keep inside room and avoid flip
-    camera.position.x = MathUtils.clamp(camera.position.x, -2.4, 2.4);
-    camera.position.z = MathUtils.clamp(camera.position.z, -3.2, 2.2);
-    camera.position.y = MathUtils.clamp(camera.position.y, 1.3, 2.2);
-    camera.rotation.x = MathUtils.clamp(camera.rotation.x, -1.45, 1.45);
+    constrainPosition?.(camera.position);
   });
 
   return null;

@@ -2,7 +2,13 @@ import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Vector3 } from "three";
 
-export default function PortalEnter({ active, target, onFinish }) {
+type PortalEnterProps = {
+  active: boolean;
+  target: Vector3 | null;
+  onFinish: () => void;
+};
+
+export default function PortalEnter({ active, target, onFinish }: PortalEnterProps) {
   const { camera } = useThree();
   const progress = useRef(0);
   const start = useRef(camera.position.clone());

@@ -2,8 +2,7 @@ import { useEffect } from "react";
 import { useGLTF, useProgress, useTexture } from "@react-three/drei";
 import { Canvas, useThree } from "@react-three/fiber";
 import { useNavigate } from "react-router-dom";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
-import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader";
+import { GLTFLoader, KTX2Loader } from "three-stdlib";
 
 function CompressedModelPreloader() {
   const { gl } = useThree();

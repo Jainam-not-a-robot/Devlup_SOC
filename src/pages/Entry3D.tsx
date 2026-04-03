@@ -2,13 +2,12 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Environment } from "@react-three/drei";
 import { useNavigate } from "react-router-dom";
-import { Vector3 } from "three";
+import { Vector3, Quaternion } from "three";
 
 import Home from "./Home";
 import Room from "../components/Room";
 import Player from "../components/Player";
 import Snow from "../components/Snow";
-import PortalEnter from "../components/PortalEnter";
 import SmoothPointerLockControls from "../components/SmoothPointerLockControls";
 import ProximityInteraction, {
   type InteractionTarget,
@@ -35,9 +34,10 @@ const ENTRY_SPAWN_POINT = {
 
 const ENTRY_MONITOR_TARGET = {
   x: 0.86,
-  y: 1.15,
-  z: 0.63,
+  y: -1,
+  z: 0,
 };
+const ENTRY_MONITOR_DEFAULT_NORMAL = new Vector3(0, 0, 1);
 
 const ENTRY_SEAT_INTERACTION_POSITION: [number, number, number] = [0.47, 1.6, -2.05];
 const ENTRY_INTERACTION_RANGE = 1.45;
@@ -69,6 +69,41 @@ type Coordinates = {
   y: number;
   z: number;
 };
+
+// --- CUSTOM TRANSITION COMPONENT ---
+function CameraTransition({
+  active,
+  cameraTarget,
+  lookTarget,
+  onFinish
+}: {
+  active: boolean;
+  cameraTarget: Vector3;
+  lookTarget: Vector3;
+  onFinish: () => void;
+}) {
+  const { camera } = useThree();
+  const finished = useRef(false);
+
+  useFrame((_, delta) => {
+    if (!active || finished.current) return;
+
+    camera.position.lerp(cameraTarget, 1.5 * delta);
+
+    const currentQuat = camera.quaternion.clone();
+    camera.lookAt(lookTarget);
+    const targetQuat = camera.quaternion.clone();
+    camera.quaternion.copy(currentQuat);
+    camera.quaternion.slerp(targetQuat, 4 * delta);
+
+    if (camera.position.distanceTo(cameraTarget) < 0.2) {
+      finished.current = true;
+      onFinish();
+    }
+  });
+
+  return null;
+}
 
 function SeatedCameraLock({ position }: { position: Vector3 }) {
   const { camera } = useThree();
@@ -117,12 +152,15 @@ function CameraCoordinatesTracker({
 
 export default function Entry3D() {
   const navigate = useNavigate();
-  const [play] = useSound("/music.mp3", {
+  
+  const [play, { stop }] = useSound("/music.mp3", {
     volume: 0.03,
     loop: true,
   });
+  
   const [isEntering, setIsEntering] = useState(false);
-  const [target, setTarget] = useState<Vector3 | null>(null);
+  const [portalCameraTarget, setPortalCameraTarget] = useState<Vector3 | null>(null);
+  const [portalLookTarget, setPortalLookTarget] = useState<Vector3 | null>(null);
   const [seatPosition, setSeatPosition] = useState<Vector3 | null>(null);
   const [activeInteraction, setActiveInteraction] = useState<InteractionTarget | null>(null);
   const [coordinates, setCoordinates] = useState<Coordinates>({
@@ -130,30 +168,52 @@ export default function Entry3D() {
     y: ENTRY_SPAWN_POINT.y,
     z: ENTRY_SPAWN_POINT.z,
   });
+  
   const returnRoute = useMemo(
     () => window.sessionStorage.getItem(LAST_CONTENT_ROUTE_KEY) || "/home",
     [],
   );
+  
   const monitorUrl = useMemo(() => {
     const url = new URL(returnRoute, window.location.origin);
     url.searchParams.set(MONITOR_EMBED_QUERY_KEY, MONITOR_EMBED_QUERY_VALUE);
     return `${url.pathname}${url.search}${url.hash}`;
   }, [returnRoute]);
+  
   const handlePortalFinish = useCallback(() => {
+    stop(); 
     navigate(returnRoute);
-  }, [navigate, returnRoute]);
-  const handleMonitorInteract = useCallback(() => {
+  }, [navigate, returnRoute, stop]);
+
+  const handleMonitorInteract = useCallback((point?: Vector3, normal?: Vector3) => {
     if (isEntering) return;
     setSeatPosition(null);
-    setTarget(
-      new Vector3(
-        ENTRY_MONITOR_TARGET.x,
-        ENTRY_MONITOR_TARGET.y,
-        ENTRY_MONITOR_TARGET.z,
-      ),
+    
+    if (document.pointerLockElement) {
+      document.exitPointerLock();
+    }
+    
+    const targetPoint = point 
+      ? new Vector3(point.x, point.y, point.z)
+      : new Vector3(ENTRY_MONITOR_TARGET.x, ENTRY_MONITOR_TARGET.y, ENTRY_MONITOR_TARGET.z);
+      
+    const outwardNormal = normal?.clone() ?? ENTRY_MONITOR_DEFAULT_NORMAL.clone();
+
+    const cameraTarget = targetPoint.clone().add(
+      outwardNormal.normalize().multiplyScalar(0.4) 
     );
+    cameraTarget.y = -1; 
+
+    const lookTarget = targetPoint.clone().sub(
+      outwardNormal.clone().multiplyScalar(10)
+    );
+    lookTarget.y = -1; 
+
+    setPortalLookTarget(lookTarget);
+    setPortalCameraTarget(cameraTarget);
     setIsEntering(true);
   }, [isEntering]);
+
   const handleSeatInteract = useCallback(() => {
     if (isEntering) return;
 
@@ -164,7 +224,14 @@ export default function Entry3D() {
         ENTRY_SEAT_SETTINGS.position.z,
       ),
     );
+
+    // INSTANT LOCK: Automatically trigger viewing mode when you sit down
+    const canvas = document.querySelector('canvas');
+    if (canvas && document.pointerLockElement === null) {
+      canvas.requestPointerLock();
+    }
   }, [isEntering]);
+  
   const interactionTargets = useMemo<InteractionTarget[]>(
     () => [
       {
@@ -178,6 +245,7 @@ export default function Entry3D() {
     ],
     [handleSeatInteract],
   );
+  
   const isSeated = !!seatPosition;
   const shouldWarmHome = isEntering && returnRoute === "/home";
 
@@ -187,34 +255,74 @@ export default function Entry3D() {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.code === "Escape" && seatPosition) {
+      // 1. Stand up using Space
+      if (event.code === "Space" && seatPosition) {
         setSeatPosition(null);
+      }
+
+      // 2. Lock/Unlock viewing mode on "L" 
+      if ((event.code === "KeyL" || event.key === "l" || event.key === "L") && !isEntering) {
+        event.preventDefault(); 
+        const canvas = document.querySelector('canvas');
+        if (canvas) {
+          // Allow the L key to TOGGLE the lock on and off
+          if (document.pointerLockElement) {
+            document.exitPointerLock();
+          } else {
+            canvas.requestPointerLock();
+          }
+        }
       }
     };
 
-    const handlePointerLockChange = () => {
-      if (seatPosition && document.pointerLockElement == null) {
-        setSeatPosition(null);
+    // 3. Lock viewing mode on Click 
+    const handleMouseDown = (event: MouseEvent) => {
+      if (event.button === 0 && !isEntering) {
+        if (document.pointerLockElement === null) {
+          const canvas = document.querySelector('canvas');
+          if (canvas) canvas.requestPointerLock();
+        }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    document.addEventListener("pointerlockchange", handlePointerLockChange);
+    window.addEventListener("mousedown", handleMouseDown); 
 
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
-      document.removeEventListener("pointerlockchange", handlePointerLockChange);
+      window.removeEventListener("mousedown", handleMouseDown); 
     };
-  }, [seatPosition]);
+  }, [seatPosition, isEntering]);
 
   return (
-    <div style={{ width: "100vw", height: "100vh", background: "black", position: "relative" }}>
+    <div
+      style={{
+        width: "100vw",
+        height: "100vh",
+        background: "black",
+        position: "fixed",
+        top: 0,
+        left: 0,
+        zIndex: 9999,
+        margin: 0,
+        padding: 0,
+        userSelect: "none", 
+        WebkitUserSelect: "none",
+      }}
+    >
       <Canvas
         camera={{
           position: [ENTRY_SPAWN_POINT.x, ENTRY_SPAWN_POINT.y, ENTRY_SPAWN_POINT.z],
           fov: 60,
         }}
         gl={{ toneMappingExposure: 0.28 }}
+        style={{
+          width: "100%",
+          height: "100%",
+          position: "absolute",
+          top: 0,
+          left: 0,
+        }}
       >
         <CameraCoordinatesTracker onChange={setCoordinates} />
 
@@ -231,8 +339,8 @@ export default function Entry3D() {
         />
         <Room
           monitorUrl={monitorUrl}
-          onMonitorClick={() => {
-            handleMonitorInteract();
+          onMonitorClick={(point, normal) => {
+            handleMonitorInteract(point, normal);
           }}
           onSeatClick={() => {
             handleSeatInteract();
@@ -247,13 +355,12 @@ export default function Entry3D() {
           size={ENTRY_SNOW_SETTINGS.size}
         />
 
-        <Suspense fallback={null}>
-          <PortalEnter
-            active={isEntering && !!target}
-            target={target}
-            onFinish={handlePortalFinish}
-          />
-        </Suspense>
+        <CameraTransition
+          active={isEntering && !!portalCameraTarget && !!portalLookTarget}
+          cameraTarget={portalCameraTarget || new Vector3()}
+          lookTarget={portalLookTarget || new Vector3()}
+          onFinish={handlePortalFinish}
+        />
 
         {seatPosition && <SeatedCameraLock position={seatPosition} />}
 
@@ -290,14 +397,17 @@ export default function Entry3D() {
           padding: "10px 12px",
           fontSize: 12,
           lineHeight: 1.35,
+          pointerEvents: "none",
+          userSelect: "none",
         }}
       >
         <div style={{ fontWeight: 700, marginBottom: 4 }}>Entry Guide</div>
-        <div>1) Move cursor normally and click monitor to enter.</div>
+        <div>1) Click the monitor to enter the system.</div>
         <div>2) Use WASD to walk (Shift to sprint).</div>
-        <div>3) Press L if you want mouse-look mode.</div>
-        <div>4) Click Seat.001 or press Enter nearby to sit.</div>
-        <div>5) Press Escape to leave the seat or unlock mouse-look.</div>
+        <div>3) Press L or Left-Click for viewing mode.</div>
+        <div>4) Click Seat or press Enter nearby to sit.</div>
+        {/* CHANGED TO REFLECT THE SPACE KEY LOGIC */}
+        <div>5) Press Space to stand up. Escape unlocks mouse.</div>
       </div>
 
       <div
@@ -315,6 +425,8 @@ export default function Entry3D() {
           fontSize: 12,
           lineHeight: 1.45,
           fontFamily: "monospace",
+          pointerEvents: "none",
+          userSelect: "none",
         }}
       >
         <div style={{ fontWeight: 700, marginBottom: 4, color: "#bfdbfe" }}>Live Coordinates</div>
@@ -352,6 +464,7 @@ export default function Entry3D() {
           background: "rgba(52,211,153,0.2)",
           zIndex: 10,
           pointerEvents: "none",
+          userSelect: "none",
         }}
       />
 
@@ -368,6 +481,8 @@ export default function Entry3D() {
           color: "#e2e8f0",
           padding: "4px 8px",
           fontSize: 12,
+          pointerEvents: "none",
+          userSelect: "none",
         }}
       >
         WASD to move | Click monitor to enter | Press L for mouse look
@@ -389,6 +504,8 @@ export default function Entry3D() {
             minWidth: 220,
             textAlign: "center",
             boxShadow: "0 10px 25px rgba(2, 6, 23, 0.45)",
+            pointerEvents: "none",
+            userSelect: "none",
           }}
         >
           <div style={{ fontSize: 12, color: "#93c5fd", marginBottom: 4 }}>
@@ -406,6 +523,7 @@ export default function Entry3D() {
             inset: 0,
             opacity: 0,
             pointerEvents: "none",
+            userSelect: "none",
             overflow: "hidden",
             zIndex: -1,
           }}

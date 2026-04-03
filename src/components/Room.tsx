@@ -1,12 +1,11 @@
 import { Html, useGLTF } from "@react-three/drei";
-import { useThree } from "@react-three/fiber";
-import { memo, useEffect, useMemo, useRef, useState } from "react";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
-import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader";
-import { DoubleSide, Group, Mesh, MeshStandardMaterial, Vector3 } from "three";
+import { createPortal, useThree } from "@react-three/fiber";
+import { Fragment, memo, useEffect, useMemo, useState, useRef } from "react";
+import { GLTFLoader, KTX2Loader } from "three-stdlib";
+import { AxesHelper, DoubleSide, Mesh, MeshStandardMaterial, Object3D, Vector3, Raycaster, Vector2, Group } from "three";
 
 type RoomProps = {
-  onMonitorClick: (point: Vector3) => void;
+  onMonitorClick: (point: Vector3, normal: Vector3) => void;
   onSeatClick?: (point: Vector3) => void;
   monitorUrl?: string | null;
 };
@@ -14,17 +13,24 @@ type RoomProps = {
 type MonitorSurfaceProps = {
   mesh: Mesh;
   url: string;
+  occludeRef: React.RefObject<Group>;
 };
 
-type MonitorInteractionPlaneProps = {
-  mesh: Mesh;
-  onInteract: (point: Vector3) => void;
+type DebugNodeInfo = {
+  id: string;
+  label: string;
+  object: Object3D;
+  axisSize: number;
+  showLabel: boolean;
 };
 
 const ROOM_SCALE = 0.5;
 const ROOM_POSITION: [number, number, number] = [0, -1, 0];
 const ROOM_ENVIRONMENT_INTENSITY = 0.05;
 const ROOM_EMISSIVE_INTENSITY_MULTIPLIER = 1;
+const MONITOR_CLICK_PADDING = 0.08;
+const MONITOR_CLICK_DEPTH_TOLERANCE = 0.8;
+const DEBUG_SCENE_GRAPH = false; // Disabled the axes and labels!
 const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
 
 const MONITOR_WEBPAGE_TRANSFORM = {
@@ -48,7 +54,6 @@ const LAMP_LIGHT = {
   distance: 2.2,
   decay: 2.4,
   position: [-1.85, -0.35, -1.25] as [number, number, number],
-
 };
 const ROOM_BORDER_LIGHTS = [
   {
@@ -69,7 +74,6 @@ const ROOM_BORDER_LIGHTS = [
     position: [0.15, 5, 4] as [number, number, number],
     rotation: [20, Math.PI, 0] as [number, number, number],
   },
-  
   {
     key: "right",
     color: "#ef4444",
@@ -100,38 +104,25 @@ function getMeshDimensions(mesh: Mesh) {
   };
 }
 
-function MonitorInteractionPlane({ mesh, onInteract }: MonitorInteractionPlaneProps) {
-  const dimensions = useMemo(() => getMeshDimensions(mesh), [mesh]);
-
-  return (
-    <mesh
-      position={[
-        dimensions.center.x,
-        dimensions.center.y,
-        dimensions.frontZ + 0.02,
-      ]}
-      onPointerDown={(event) => {
-        event.stopPropagation();
-        onInteract(event.point.clone());
-      }}
-    >
-      <planeGeometry
-        args={[
-          Math.max(dimensions.size.x * 1.2, 0.8),
-          Math.max(dimensions.size.y * 1.2, 0.5),
-        ]}
-      />
-      <meshBasicMaterial
-        transparent
-        opacity={0.001}
-        side={DoubleSide}
-        depthWrite={false}
-      />
-    </mesh>
+function getMonitorFocusPoint(mesh: Mesh) {
+  mesh.updateWorldMatrix(true, false);
+  const dimensions = getMeshDimensions(mesh);
+  const localCenter = new Vector3(
+    dimensions.center.x,
+    dimensions.center.y,
+    dimensions.frontZ,
   );
+  return localCenter.applyMatrix4(mesh.matrixWorld);
 }
 
-function MonitorSurface({ mesh, url }: MonitorSurfaceProps) {
+function getMonitorNormal(mesh: Mesh) {
+  mesh.updateWorldMatrix(true, false);
+  const normal = new Vector3(0, 0, 1);
+  normal.transformDirection(mesh.matrixWorld);
+  return normal.normalize();
+}
+
+function MonitorSurface({ mesh, url, occludeRef }: MonitorSurfaceProps) {
   const dimensions = useMemo(() => getMeshDimensions(mesh), [mesh]);
 
   const widthUnits = Math.max(dimensions.size.x * MONITOR_WEBPAGE_TRANSFORM.scale.x, 0.1);
@@ -143,12 +134,14 @@ function MonitorSurface({ mesh, url }: MonitorSurfaceProps) {
   );
   const htmlScale = widthUnits / widthPixels;
 
+  const zOffset = 0.05; // Pushed slightly forward to prevent self-occlusion
+
   return (
     <group
       position={[
         dimensions.center.x + dimensions.size.x * MONITOR_WEBPAGE_TRANSFORM.position.x,
         dimensions.center.y + dimensions.size.y * MONITOR_WEBPAGE_TRANSFORM.position.y,
-        dimensions.frontZ + MONITOR_WEBPAGE_TRANSFORM.position.z,
+        dimensions.frontZ + MONITOR_WEBPAGE_TRANSFORM.position.z + zOffset,
       ]}
       rotation={[
         toRadians(MONITOR_WEBPAGE_TRANSFORM.rotationDegrees.x),
@@ -159,22 +152,24 @@ function MonitorSurface({ mesh, url }: MonitorSurfaceProps) {
       <Html
         transform
         center
-        occlude={false}
+        occlude="blending"
         zIndexRange={[1, 0]}
         scale={htmlScale}
+        wrapperClass="ghost-html-container"
         style={{
           width: `${widthPixels}px`,
           height: `${heightPixels}px`,
-          pointerEvents: "none",
+          pointerEvents: "none", 
+          userSelect: "none",
           overflow: "hidden",
           borderRadius: `${MONITOR_WEBPAGE_TRANSFORM.borderRadius}px`,
           background: "#050816",
           boxShadow: "0 0 30px rgba(34, 211, 238, 0.22)",
           backfaceVisibility: "hidden",
           transformStyle: "preserve-3d",
-        }}
+        }} 
       >
-       
+        <div style={{ position: "absolute", inset: 0, zIndex: 10, pointerEvents: "none" }} />
         <iframe
           title="Website monitor preview"
           src={url}
@@ -185,6 +180,7 @@ function MonitorSurface({ mesh, url }: MonitorSurfaceProps) {
             display: "block",
             background: "#050816",
             pointerEvents: "none",
+            userSelect: "none",
           }}
         />
       </Html>
@@ -192,14 +188,50 @@ function MonitorSurface({ mesh, url }: MonitorSurfaceProps) {
   );
 }
 
+function DebugSceneGraph({ nodes }: { nodes: DebugNodeInfo[] }) {
+  return (
+    <>
+      {nodes.map((node) =>
+        createPortal(
+          <Fragment key={node.id}>
+            <primitive object={new AxesHelper(node.axisSize)} />
+            {node.showLabel && (
+              <Html
+                center
+                distanceFactor={7}
+                style={{
+                  pointerEvents: "none",
+                  fontSize: "10px",
+                  fontFamily: "monospace",
+                  color: "#f8fafc",
+                  background: "rgba(2, 6, 23, 0.78)",
+                  border: "1px solid rgba(56, 189, 248, 0.7)",
+                  borderRadius: "6px",
+                  padding: "2px 5px",
+                  whiteSpace: "nowrap",
+                  transform: "translateY(-18px)",
+                }}
+              >
+                {node.label}
+              </Html>
+            )}
+          </Fragment>,
+          node.object
+        ),
+      )}
+    </>
+  );
+}
+
 function Room({ onMonitorClick, onSeatClick, monitorUrl }: RoomProps) {
-  const { gl } = useThree();
-  const roomGroupRef = useRef<Group | null>(null);
+  const { gl, camera, scene, pointer } = useThree(); 
+  const roomRef = useRef<Group>(null);
+  
   const ktx2Loader = useMemo(
     () => new KTX2Loader().setTranscoderPath("/basis/").detectSupport(gl),
     [gl],
   );
-  const { scene } = useGLTF(
+  const { scene: gltfScene } = useGLTF(
     "/model-compressed.glb",
     false,
     false,
@@ -208,6 +240,35 @@ function Room({ onMonitorClick, onSeatClick, monitorUrl }: RoomProps) {
     },
   );
   const [monitorMesh, setMonitorMesh] = useState<Mesh | null>(null);
+  
+  const debugNodes = useMemo<DebugNodeInfo[]>(() => {
+    if (!DEBUG_SCENE_GRAPH) return [];
+
+    const nodes: DebugNodeInfo[] = [];
+    gltfScene.traverse((obj) => {
+      const label = obj.name || obj.type;
+      const lowered = label.toLowerCase();
+      const isMesh = (obj as Mesh).isMesh === true;
+      const isImportant =
+        lowered.includes("room") ||
+        lowered.includes("monitor") ||
+        lowered.includes("screen") ||
+        lowered.includes("seat") ||
+        lowered.includes("chair");
+
+      if (!isMesh && !isImportant) return;
+
+      nodes.push({
+        id: `${obj.uuid}-debug`,
+        label,
+        object: obj,
+        axisSize: isImportant ? 0.6 : 0.18,
+        showLabel: isImportant,
+      });
+    });
+
+    return nodes;
+  }, [gltfScene]);
 
   useEffect(() => {
     return () => {
@@ -218,7 +279,7 @@ function Room({ onMonitorClick, onSeatClick, monitorUrl }: RoomProps) {
   useEffect(() => {
     let foundMonitorMesh: Mesh | null = null;
 
-    scene.traverse((obj) => {
+    gltfScene.traverse((obj) => {
       const mesh = obj as Mesh;
 
       if (!mesh.isMesh) return;
@@ -247,13 +308,9 @@ function Room({ onMonitorClick, onSeatClick, monitorUrl }: RoomProps) {
         foundMonitorMesh = mesh;
 
         const liveMonitorMaterial = new MeshStandardMaterial({
-          color: "#050816",
-          emissive: "#020617",
-          emissiveIntensity: 0.18,
-          roughness: 0.95,
-          metalness: 0.02,
-          envMapIntensity: 0.01,
-          side: DoubleSide,
+          transparent: true,
+          opacity: 0,
+          depthWrite: false,
         });
         liveMonitorMaterial.needsUpdate = true;
         mesh.material = liveMonitorMaterial;
@@ -261,16 +318,57 @@ function Room({ onMonitorClick, onSeatClick, monitorUrl }: RoomProps) {
     });
 
     if (foundMonitorMesh) {
-      console.log("Monitor found:", foundMonitorMesh.name);
       setMonitorMesh(foundMonitorMesh);
     } else {
-      console.warn("Monitor not found");
       setMonitorMesh(null);
     }
-  }, [scene]);
+  }, [gltfScene]);
+
+  // --- CENTER-CAMERA RAYCASTER ---
+  useEffect(() => {
+    const raycaster = new Raycaster();
+    const centerNDC = new Vector2(0, 0);
+
+    const handleGlobalClick = () => {
+      const isLocked = document.pointerLockElement !== null;
+
+      if (isLocked) {
+        raycaster.setFromCamera(centerNDC, camera);
+      } else {
+        raycaster.setFromCamera(pointer, camera);
+      }
+
+      const intersects = raycaster.intersectObjects(scene.children, true);
+
+      const monitorHit = intersects.find((hit) => {
+        const mesh = hit.object as Mesh;
+        const isIdentityMatch = !!monitorMesh && (
+          mesh.uuid === monitorMesh.uuid || 
+          mesh.parent?.uuid === monitorMesh.uuid
+        );
+        const isNameMatch = (mesh.name || "").toLowerCase().includes("monitor") || 
+                            (mesh.name || "").toLowerCase().includes("screen");
+        
+        return isIdentityMatch || isNameMatch;
+      });
+
+      const seatHit = intersects.find((hit) => {
+        return (hit.object.name || "").toLowerCase().includes("seat");
+      });
+
+      if (monitorHit && monitorMesh) {
+        onMonitorClick(getMonitorFocusPoint(monitorMesh), getMonitorNormal(monitorMesh));
+      } else if (seatHit) {
+        onSeatClick?.(seatHit.point.clone());
+      }
+    };
+
+    gl.domElement.addEventListener('click', handleGlobalClick);
+    return () => gl.domElement.removeEventListener('click', handleGlobalClick);
+  }, [gl, camera, scene, pointer, monitorMesh, onMonitorClick, onSeatClick]);
 
   return (
-    <group ref={roomGroupRef} scale={ROOM_SCALE} position={ROOM_POSITION}>
+    <group scale={ROOM_SCALE} position={ROOM_POSITION} ref={roomRef}>
       <ambientLight intensity={0.08} color="#f8f1e3" />
       <pointLight
         color={LAMP_LIGHT.color}
@@ -290,69 +388,57 @@ function Room({ onMonitorClick, onSeatClick, monitorUrl }: RoomProps) {
           rotation={light.rotation}
         />
       ))}
+      
       <primitive
-        object={scene}
-        onPointerMove={(e) => {
-          const name = (e.object.name || "").toLowerCase();
+        object={gltfScene}
+        onPointerOver={(e: any) => {
+          const monitorHit = e.intersections.find((hit: any) => {
+            const name = (hit.object.name || "").toLowerCase();
+            return name.includes("monitor") || name.includes("screen");
+          });
 
-          if (name.includes("monitor") || name.includes("screen")) {
-            const material = e.object.material;
+          if (monitorHit) {
+            const material = monitorHit.object.material;
             if (material instanceof MeshStandardMaterial) {
               material.emissiveIntensity = 0.28;
               material.needsUpdate = true;
             }
           }
         }}
-        onPointerOut={(e) => {
-          const material = e.object.material;
-          if (material instanceof MeshStandardMaterial) {
-            material.emissiveIntensity = 0.12;
-            material.needsUpdate = true;
-          }
-        }}
-        onPointerDown={(e) => {
-          e.stopPropagation();
+        onPointerOut={(e: any) => {
+          const monitorHit = e.intersections.find((hit: any) => {
+            const name = (hit.object.name || "").toLowerCase();
+            return name.includes("monitor") || name.includes("screen");
+          });
 
-          const name = (e.object.name || "").toLowerCase();
-
-          console.log("Clicked:", name);
-
-          if (name.includes("monitor") || name.includes("screen")) {
-            console.log("Monitor clicked");
-            onMonitorClick(e.point.clone());
-            return;
-          }
-
-          if (name.includes("seat")) {
-            onSeatClick?.(e.point.clone());
+          if (monitorHit) {
+            const material = monitorHit.object.material;
+            if (material instanceof MeshStandardMaterial) {
+              material.emissiveIntensity = 0.12;
+              material.needsUpdate = true;
+            }
           }
         }}
       />
 
       {monitorMesh && (
-        <group
-          position={monitorMesh.position}
-          rotation={monitorMesh.rotation}
-          scale={monitorMesh.scale}
-        >
-          <MonitorInteractionPlane
-            mesh={monitorMesh}
-            onInteract={(point) => {
-              console.log("Monitor clicked");
-              onMonitorClick(point);
-            }}
-          />
-          <rectAreaLight
-            color={MONITOR_BACKLIGHT.color}
-            intensity={MONITOR_BACKLIGHT.intensity}
-            width={MONITOR_BACKLIGHT.width}
-            height={MONITOR_BACKLIGHT.height}
-            position={MONITOR_BACKLIGHT.position}
-            rotation={MONITOR_BACKLIGHT.rotation}
-          />
-          {monitorUrl && <MonitorSurface mesh={monitorMesh} url={monitorUrl} />}
-        </group>
+        createPortal(
+          <Fragment>
+            <rectAreaLight
+              color={MONITOR_BACKLIGHT.color}
+              intensity={MONITOR_BACKLIGHT.intensity}
+              width={MONITOR_BACKLIGHT.width}
+              height={MONITOR_BACKLIGHT.height}
+              position={MONITOR_BACKLIGHT.position}
+              rotation={MONITOR_BACKLIGHT.rotation}
+            />
+            {monitorUrl && <MonitorSurface mesh={monitorMesh} url={monitorUrl} occludeRef={roomRef} />}
+          </Fragment>,
+          monitorMesh,
+        )
       )}
+
+      {DEBUG_SCENE_GRAPH && <DebugSceneGraph nodes={debugNodes} />}
     </group>
   );
 }

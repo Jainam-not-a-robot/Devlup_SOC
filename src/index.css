@@ -300,3 +300,9 @@
     animation: star-twinkle 2s ease-in-out infinite;
   }
 }
+
+.ghost-html-container {
+  pointer-events: none !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}

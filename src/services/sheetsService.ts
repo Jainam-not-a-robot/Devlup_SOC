@@ -73,25 +73,25 @@ const MOCK_PROJECTS: Project[] = [
 function parseCSV(csvText: string): any[] {
   // Split the CSV text into rows, handling '\r' characters
   const rows = csvText.split(/\r?\n/);
-  
+
   if (rows.length <= 1) {
     return [];
   }
-  
+
   // Check for potential tab separation instead of commas
   if (rows[0].includes('\t')) {
     return parseTabSeparatedValues(csvText);
   }
-  
+
   // Function to parse a single line, respecting quotes
   function parseLine(line: string): string[] {
     const result: string[] = [];
     let current = '';
     let inQuotes = false;
-    
+
     for (let i = 0; i < line.length; i++) {
       const char = line[i];
-      
+
       if (char === '"') {
         inQuotes = !inQuotes;
         current += char;
@@ -102,9 +102,9 @@ function parseCSV(csvText: string): any[] {
         current += char;
       }
     }
-    
+
     result.push(current);
-    
+
     return result.map(field => {
       if (field.startsWith('"') && field.endsWith('"')) {
         return field.substring(1, field.length - 1);
@@ -112,70 +112,115 @@ function parseCSV(csvText: string): any[] {
       return field.trim();
     });
   }
-  
+
   const headers = parseLine(rows[0]);
   const data = [];
-  
+
   for (let i = 1; i < rows.length; i++) {
     if (!rows[i].trim()) continue;
-    
+
     const rowData = parseLine(rows[i]);
     const rowObject: Record<string, string> = {};
-    
+
     for (let j = 0; j < headers.length; j++) {
       rowObject[headers[j].trim()] = j < rowData.length ? rowData[j] : '';
     }
-    
+
     data.push(rowObject);
   }
-  
+
   return data;
 }
 
 // Function to parse tab-separated values (TSV)
 function parseTabSeparatedValues(tsvText: string): any[] {
   const rows = tsvText.split(/\r?\n/);
-  
+
   if (rows.length <= 1) {
     return [];
   }
-  
+
   const headers = rows[0].split('\t').map(header => header.trim());
-  
+
   const data = [];
-  
+
   for (let i = 1; i < rows.length; i++) {
     if (!rows[i].trim()) continue;
-    
+
     const values = rows[i].split('\t');
-    
+
     const rowObject: Record<string, string> = {};
-    
+
     for (let j = 0; j < headers.length; j++) {
       rowObject[headers[j]] = j < values.length ? values[j].trim() : '';
     }
-    
+
     data.push(rowObject);
   }
-  
+
   return data;
 }
 
 // Fetch projects from Google Sheets using CSV export
 export const fetchProjects = async (): Promise<Project[]> => {
   try {
+    const useBackend = import.meta.env.VITE_USE_BACKEND === 'true';
+
+    if (useBackend) {
+      const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const response = await axios.get(`${backendUrl}/projects`);
+      
+      return response.data.map((item: any) => ({
+        id: item._id || item.id,
+        name: item.project_title || '',
+        description: item.project_description || '',
+        techStack: item.tech_stack || [],
+        mentor: item.mentors && item.mentors.length > 0 ? {
+          name: item.mentors[0].name || '',
+          role: item.mentors[0].role || 'Project Mentor',
+          email: item.mentors[0].email || undefined,
+          linkedin: item.mentors[0].linkedin || undefined,
+          github: item.mentors[0].github || undefined
+        } : { name: '', role: 'Project Mentor' },
+        mentor2: item.mentors && item.mentors.length > 1 ? {
+          name: item.mentors[1].name || '',
+          role: item.mentors[1].role || 'Project Mentor',
+          email: item.mentors[1].email || undefined,
+          linkedin: item.mentors[1].linkedin || undefined,
+          github: item.mentors[1].github || undefined
+        } : undefined,
+        mentor3: item.mentors && item.mentors.length > 2 ? {
+          name: item.mentors[2].name || '',
+          role: item.mentors[2].role || 'Project Mentor',
+          email: item.mentors[2].email || undefined,
+          linkedin: item.mentors[2].linkedin || undefined,
+          github: item.mentors[2].github || undefined
+        } : undefined,
+        projectDoc: item.docs || '',
+        category: item.category || undefined,
+        status: item.status || undefined,
+        currentDesc: item.current_desc || undefined,
+        liveLinks: item.live_links || undefined,
+        projectGithub: item.github_repo_link || undefined,
+        industryMentor: item.industry_mentor ? item.industry_mentor.name : undefined,
+        industryMentorEmail: item.industry_mentor ? item.industry_mentor.email : undefined,
+        industryMentorLinkedIn: item.industry_mentor ? item.industry_mentor.linkedin : undefined,
+        recommended: item.recommended || undefined
+      }));
+    }
+
     const csvUrl = import.meta.env.VITE_GOOGLE_SHEETS_CSV_URL || "";
 
     const response = await axios.get(csvUrl);
-    
+
     const parsedData = parseCSV(response.data);
-    
+
     if (!parsedData || parsedData.length === 0) {
       throw new Error('No project data found');
     }
-    
+
     const projectsData = parsedData.map((item, index) => {
-      const techStack = item['Tech Stack (Comma separated)'] || item['Tech Stack (Comma rated)'] ? 
+      const techStack = item['Tech Stack (Comma separated)'] || item['Tech Stack (Comma rated)'] ?
         (item['Tech Stack (Comma separated)'] || item['Tech Stack (Comma rated)']).split(',').map((tech: string) => {
           return tech.trim().replace(/\b\w/g, char => char.toUpperCase());
         }) : [];
@@ -196,7 +241,7 @@ export const fetchProjects = async (): Promise<Project[]> => {
 
       const rawStatus = getField(['Status', 'status']);
       const rawCurrentDesc = getField(['Current Desc', 'Current Description', 'CurrentDesc', 'current desc']);
-      const rawLiveLinks = getField(['Live Links', 'Live Link', 'Live Links (comma separated)', 'Live Links (comma separated)'] );
+      const rawLiveLinks = getField(['Live Links', 'Live Link', 'Live Links (comma separated)', 'Live Links (comma separated)']);
       const rawProjectGithub = getField(['Project Github', 'Project GitHub', 'Project Github Url', 'Project GitHub Url', 'Project Git Repo', 'Github', 'GitHub']);
       const rawIndustryMentor = getField(['Industry Mentor', 'Industry mentor', 'industry mentor', 'IndustryMentor']);
       const rawIndustryMentorEmail = getField(['Industry Mentor Mail', 'Industry Mentor Email', 'Industry mentor mail', 'Industry mentor email']);
@@ -243,7 +288,7 @@ export const fetchProjects = async (): Promise<Project[]> => {
         recommended: rawRecommended ? rawRecommended.toString().trim() : undefined
       };
     });
-    
+
     return projectsData;
   } catch (error) {
     return MOCK_PROJECTS;

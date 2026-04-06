@@ -14,12 +14,16 @@ import ApplyPage from "./pages/ApplyPage";
 import Contact from "./pages/Contact";
 import Stats from "./pages/Stats";
 import Timeline from "./pages/Timeline";
+import AdminPanel from "./pages/AdminPanel";
 import { TerminalProvider } from "./context/TerminalContext";
+import { AuthProvider } from "./context/AuthContext";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import AnalyticsTracker from "./components/AnalyticsTracker";
 import ShortcutProvider from "./components/ShortcutProvider";
 import SnowEffect from "./components/SnowEffect";
+import LoginModal from "./components/LoginModal";
+import ProtectedRoute from "./components/ProtectedRoute";
 import { ThemeProvider, useTheme } from "./components/ThemeProvider";
 
 const queryClient = new QueryClient();
@@ -35,8 +39,14 @@ const AppContent = () => {
       {/* <div className="relative" style={{ zIndex: 10 }}> */}
         <Navbar />
       {/* </div> */}
+      <LoginModal />
       <main className="flex-grow relative" >
         <Routes>
+          <Route path="/admin" element={
+            <ProtectedRoute>
+              <AdminPanel />
+            </ProtectedRoute>
+          } />
           <Route path="/mentors" element={<Mentors />} />
           <Route path="/apply/form" element={<ApplyFormPage />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
@@ -70,15 +80,17 @@ const App = () => (
       <Toaster />
       <Sonner />
       <ThemeProvider>
-        <TerminalProvider>
-          <BrowserRouter>
-            <ShortcutProvider>
-              <AppContent />
-              {/* Add analytics tracker to record page visits */}
-              <AnalyticsTracker />
-            </ShortcutProvider>
-          </BrowserRouter>
-        </TerminalProvider>
+        <AuthProvider>
+          <TerminalProvider>
+            <BrowserRouter>
+              <ShortcutProvider>
+                <AppContent />
+                {/* Add analytics tracker to record page visits */}
+                <AnalyticsTracker />
+              </ShortcutProvider>
+            </BrowserRouter>
+          </TerminalProvider>
+        </AuthProvider>
       </ThemeProvider>
     </TooltipProvider>
   </QueryClientProvider>

@@ -35,4 +35,18 @@ export const contributors: Contributor[] = [
     github: "https://github.com",
     contributions: 4,
   },
+    {
+    id: 4,
+    name: "Atharv",
+    avatar: "avatars/pro2.webp",
+    github: "https://github.com",
+    contributions: 4,
+  },
+    {
+    id: 4,
+    name: "Rishikesh",
+    avatar: "avatars/pro.png",
+    github: "https://github.com",
+    contributions: 4,
+  },
 ];

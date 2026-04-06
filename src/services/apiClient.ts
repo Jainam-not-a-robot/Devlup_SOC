@@ -1,0 +1,126 @@
+import axios from 'axios';
+
+// Create an Axios instance pointing to the FastAPI backend
+const apiClient = axios.create({
+  baseURL: 'http://localhost:8000', // Update this if your backend runs on a different URL/port
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add a request interceptor to attach JWT token to admin requests
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('admin_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
+
+export interface ApplicationPayload {
+  mentee_name: string;
+  mentee_roll_number: string;
+  mentee_github_id: string;
+  mentee_email_id: string;
+  mentee_proposal_url: string;
+  project_name_1: string;
+  project_name_2?: string;
+}
+
+// Function to log in and get JWT token
+export const adminLogin = async (username: string, password: string) => {
+  try {
+    const formData = new URLSearchParams();
+    formData.append('username', username);
+    formData.append('password', password);
+
+    const response = await apiClient.post('/login', formData, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error logging in:", error);
+    throw error;
+  }
+};
+
+// Function to submit an application to the FastAPI backend
+export const submitApplication = async (data: ApplicationPayload) => {
+  try {
+    const response = await apiClient.post('/applications', data);
+    return response.data;
+  } catch (error) {
+    console.error("Error submitting application:", error);
+    throw error;
+  }
+};
+
+// ===========================
+// ADMIN: Projects CRUD
+// ===========================
+export const fetchProjects = async (params?: { year?: number; status?: string; type?: string }) => {
+  const response = await apiClient.get('/projects', { params });
+  return response.data;
+};
+
+export const createProject = async (data: any) => {
+  const response = await apiClient.post('/projects', data);
+  return response.data;
+};
+
+export const updateProject = async (id: string, data: any) => {
+  const response = await apiClient.put(`/projects/${id}`, data);
+  return response.data;
+};
+
+export const deleteProject = async (id: string) => {
+  const response = await apiClient.delete(`/projects/${id}`);
+  return response.data;
+};
+
+// ===========================
+// ADMIN: Applications CRUD
+// ===========================
+export const fetchApplications = async () => {
+  const response = await apiClient.get('/applications');
+  return response.data;
+};
+
+export const updateApplication = async (id: string, data: any) => {
+  const response = await apiClient.put(`/applications/${id}`, data);
+  return response.data;
+};
+
+export const deleteApplication = async (id: string) => {
+  const response = await apiClient.delete(`/applications/${id}`);
+  return response.data;
+};
+
+// ===========================
+// ADMIN: Mentors CRUD
+// ===========================
+export const fetchMentors = async () => {
+  const response = await apiClient.get('/mentors');
+  return response.data;
+};
+
+export const createMentor = async (data: any) => {
+  const response = await apiClient.post('/mentors', data);
+  return response.data;
+};
+
+export const updateMentor = async (id: string, data: any) => {
+  const response = await apiClient.put(`/mentors/${id}`, data);
+  return response.data;
+};
+
+export const deleteMentor = async (id: string) => {
+  const response = await apiClient.delete(`/mentors/${id}`);
+  return response.data;
+};
+
+export default apiClient;

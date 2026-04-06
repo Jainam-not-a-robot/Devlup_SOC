@@ -1,12 +1,12 @@
 import React from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import { useEffect } from "react";
-import { Link } from "react-router-dom";
 import { Home, ArrowLeft } from "lucide-react";
 import TerminalHeader from "../components/TerminalHeader";
 
 const NotFound = () => {
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     console.error(
@@ -43,7 +43,7 @@ const NotFound = () => {
               </Link>
               
               <button
-                onClick={() => window.history.back()}
+                onClick={() => navigate('/admin')}
                 className="inline-flex items-center gap-2 bg-terminal-dim/20 hover:bg-terminal-dim/30 text-terminal-text font-medium px-4 sm:px-6 py-2 sm:py-3 rounded-md transition-all border border-terminal-dim text-sm sm:text-base"
               >
                 <ArrowLeft size={18} className="sm:w-5 sm:h-5" />

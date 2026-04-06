@@ -3,6 +3,7 @@ import { mentors } from "../data/mentors";
 import { FaGithub, FaLinkedinIn, FaEnvelope } from "react-icons/fa";
 import { useTheme } from "../components/ThemeProvider";
 import { useState } from "react";
+import { motion } from "framer-motion";
 
 const Mentors = () => {
   const { showSnow } = useTheme();
@@ -32,46 +33,24 @@ const Mentors = () => {
     >
       {showSnow && <SnowEffect />}
 
-      {/* FIXED YEAR FILTER (Below Shortcuts) */}
+      {/* YEAR FILTER */}
       <div className="fixed top-28 right-6 z-50">
         <div
           className="relative rounded-full transition-all duration-300 hover:scale-105"
           style={{
-            background: "var(--terminal-window-bg)",
+            background: "rgba(15,25,40,0.5)",
+            backdropFilter: "blur(10px)",
             border: "1px solid var(--terminal-window-border)",
             boxShadow: "var(--window-shadow-5)",
           }}
-          onMouseEnter={(e) =>
-            (e.currentTarget.style.boxShadow = "0 0 18px var(--accent-glow)")
-          }
-          onMouseLeave={(e) =>
-            (e.currentTarget.style.boxShadow = "var(--window-shadow-5)")
-          }
         >
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(e.target.value)}
-            className="
-              appearance-none
-              bg-transparent
-              px-6 py-3 pr-10
-              rounded-full
-              outline-none
-              cursor-pointer
-              transition-all duration-300
-            "
+            className="appearance-none bg-transparent px-6 py-3 pr-10 rounded-full outline-none cursor-pointer"
             style={{
               color: "var(--terminal-text)",
-              backgroundColor: "var(--terminal-window-bg)",
             }}
-            onFocus={(e) =>
-              (e.currentTarget.parentElement!.style.boxShadow =
-                "0 0 20px var(--accent-glow)")
-            }
-            onBlur={(e) =>
-              (e.currentTarget.parentElement!.style.boxShadow =
-                "var(--window-shadow-5)")
-            }
           >
             {years.map((year, i) => (
               <option
@@ -98,64 +77,88 @@ const Mentors = () => {
 
       {/* HERO */}
       <section className="text-center pt-32 pb-10 px-6 relative z-10">
-        <h1 className="text-5xl md:text-6xl font-bold">DevLUp Mentors</h1>
+        <h1 className="text-5xl md:text-6xl font-bold">DevlUp Mentors</h1>
 
         <p className="mt-6 text-[var(--terminal-dim)] max-w-2xl mx-auto">
-          Connect with mentors and explore guidance across DevLUp projects.
+          Connect with the mentors and explore the guidance across DevlUp projects.
         </p>
       </section>
 
-      {/* MENTORS GRID */}
-      <section
-        className="max-w-6xl mx-auto px-6 pb-24 relative z-10
-                   grid grid-cols-1 md:grid-cols-2 gap-8"
-      >
+      {/* GRID */}
+      <section className="max-w-6xl mx-auto px-6 pb-24 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+
         {filteredMentors.map((mentor, i) => (
-          <div
+          <motion.div
             key={i}
-            className="rounded-lg p-6 backdrop-blur-sm transition-all duration-300
-                       hover:-translate-y-1 relative"
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: i * 0.1 }}
+            whileHover={{ scale: 1.04 }}
+            className="group relative h-[420px] rounded-xl overflow-hidden transition-all duration-300 backdrop-blur-md"
             style={{
-              background: "var(--terminal-window-bg)",
-              border: "1px solid var(--terminal-window-border)",
-              boxShadow: "var(--window-shadow-5)",
+              background: "rgba(20,35,60,0.22)",
+              border: "1px solid rgba(255,255,255,0.15)",
+              boxShadow: "0 10px 40px rgba(0,0,0,0.35)",
             }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.boxShadow = "0 0 25px var(--accent-glow)")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.boxShadow = "var(--window-shadow-5)")
-            }
           >
-            <div className="flex items-center gap-6">
+
+            {/* PREVIEW */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 transition-opacity duration-300 group-hover:opacity-0">
+
               <img
                 src={mentor.image}
-                className="w-24 h-24 rounded-full object-cover border"
-                style={{
-                  borderColor: "var(--terminal-window-border)",
-                }}
                 alt={mentor.name}
+                className="w-36 h-36 rounded-full object-cover border"
+                style={{
+                  borderColor: "rgba(255,255,255,0.3)"
+                }}
               />
 
-              <div className="flex-1">
-                <h2 className="text-xl font-semibold">{mentor.name}</h2>
+              <h2 className="text-2xl font-semibold">
+                {mentor.name}
+              </h2>
 
-                <p className="mt-1 text-sm text-[var(--terminal-dim)]">
-                  {mentor.role} • {mentor.year}
-                </p>
+            </div>
 
-                <p className="mt-3 text-[var(--terminal-dim)]">
+            {/* HOVER CONTENT */}
+            <div className="absolute inset-0 flex flex-col opacity-0 translate-y-40 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0">
+
+              {/* IMAGE */}
+              <div className="px-6 pt-6">
+                <img
+                  src={mentor.image}
+                  alt={mentor.name}
+                  className="w-full h-[180px] object-cover rounded-lg"
+                />
+              </div>
+
+              {/* CONTENT */}
+              <div className="px-6 pt-4 flex flex-col">
+
+                <div className="flex gap-2 mb-2">
+                  <span className="text-xs px-3 py-1 border rounded-full border-white/30">
+                    {mentor.role}
+                  </span>
+
+                  <span className="text-xs px-3 py-1 border rounded-full border-white/30">
+                    {mentor.year}
+                  </span>
+                </div>
+
+                <h3 className="text-lg font-semibold">
+                  {mentor.name}
+                </h3>
+
+                <p className="text-sm text-[var(--terminal-dim)] mt-1">
                   {mentor.expertise}
                 </p>
 
-                <p className="mt-3 text-sm">
-                  📧{" "}
-                  <span className="text-[var(--terminal-dim)]">
-                    {mentor.email}
-                  </span>
+                <p className="text-sm mt-2 text-[var(--terminal-dim)]">
+                  📧 {mentor.email}
                 </p>
 
-                <div className="flex gap-6 mt-5 text-lg">
+                <div className="flex gap-4 mt-4 text-lg">
+
                   <a
                     href={mentor.github}
                     target="_blank"
@@ -180,11 +183,15 @@ const Mentors = () => {
                   >
                     <FaEnvelope />
                   </a>
+
                 </div>
+
               </div>
+
             </div>
-          </div>
+          </motion.div>
         ))}
+
       </section>
     </div>
   );

@@ -25,7 +25,6 @@ export function useKeyboardShortcuts() {
     const shortcuts: ShortcutRoute[] = [
       { key: 'h', route: '/', description: 'Home', altKey: true },
       { key: 'p', route: '/projects', description: 'Projects', altKey: true },
-      { key: 'm', route: '/mentors', description: 'Mentors', altKey: true }, // ✅ ADDED
       { key: 'a', route: '/apply', description: 'Apply', altKey: true },
       { key: 't', route: '/timeline', description: 'Timeline', altKey: true },
       { key: 's', route: '/stats', description: 'Stats', altKey: true },
@@ -109,7 +108,6 @@ export function useKeyboardShortcuts() {
           <p className="font-semibold">Navigation:</p>
           <p><kbd className="px-1 bg-terminal-dim rounded">Alt+H</kbd> - Home</p>
           <p><kbd className="px-1 bg-terminal-dim rounded">Alt+P</kbd> - Projects</p>
-          <p><kbd className="px-1 bg-terminal-dim rounded">Alt+M</kbd> - Mentors</p> 
           <p><kbd className="px-1 bg-terminal-dim rounded">Alt+A</kbd> - Apply</p>
           <p><kbd className="px-1 bg-terminal-dim rounded">Alt+T</kbd> - Timeline</p>
           <p><kbd className="px-1 bg-terminal-dim rounded">Alt+S</kbd> - Stats</p>

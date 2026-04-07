@@ -50,11 +50,10 @@ const Navbar = () => {
   const navLinks = [
     { path: '/', icon: Home, label: 'Home', shortcut: 'Alt+H' },
     { path: '/projects', icon: Briefcase, label: 'Projects', shortcut: 'Alt+P' },
-    { path: '/mentors', icon: GraduationCap, label: 'Mentors', shortcut: 'Alt+M' },
     { path: '/apply', icon: User, label: 'Apply', shortcut: 'Alt+A' },
     { path: '/timeline', icon: Calendar, label: 'Timeline', shortcut: 'Alt+T' },
     { path: '/stats', icon: BarChart, label: 'Stats', shortcut: 'Alt+S' },
-    { path: '/issues', icon: AlertCircle, label: 'Issues', shortcut: 'Alt+I' },
+    { path: '/projects/issues', icon: AlertCircle, label: 'Issues', shortcut: 'Alt+I' },
     { path: '/contact', icon: Phone, label: 'Contact', shortcut: 'Alt+C' },
   ];
 

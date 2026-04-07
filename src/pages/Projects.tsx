@@ -459,7 +459,7 @@ const Projects = () => {
             <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-terminal-text mb-2 sm:mb-3">{selectedTab === 'Ongoing' ? 'Live Projects' : selectedTab === 'Completed' ? 'Completed Projects' : 'Archived Projects'}</h1>
             <div className="flex items-center gap-2 flex-wrap mb-2 sm:mb-3">
               {(
-                showArchived ? (['Ongoing', 'Completed', 'Issues', 'Archived'] as const) : (['Ongoing', 'Completed', 'Issues'] as const)
+                showArchived ? (['Ongoing', 'Completed', 'Archived'] as const) : (['Ongoing', 'Completed'] as const)
               ).map(tab => (
                 <button
                   key={tab}
@@ -469,7 +469,7 @@ const Projects = () => {
                 </button>
               ))}
             </div>
-            <p className="text-terminal-dim mt-2 sm:mt-3 text-xs sm:text-sm md:text-base">Use the tabs to switch between Live, Completed, Issues and Archived projects.</p>
+            <p className="text-terminal-dim mt-2 sm:mt-3 text-xs sm:text-sm md:text-base">Use the tabs to switch between Live, Completed, and Archived projects.</p>
           </div>
 
           <div className="space-y-4 sm:space-y-6">
@@ -519,7 +519,7 @@ const Projects = () => {
               </div>
             ) : selectedTab === 'Issues' ? (
               <div className="space-y-4">
-                <ProjectIssuesPanel repoUrl="https://github.com/rougier/scientific-visualization-book" />
+                <ProjectIssuesPanel repoUrl="https://devlup-labs.github.io/" />
               </div>
             ) : projectsForTab.length > 0 ? (
               <div className="space-y-4">

@@ -62,7 +62,7 @@ const Home = () => {
             </div>
           )}
           <p className="text-base sm:text-xl text-terminal-dim max-w-2xl mx-auto px-2">
-            Explore all projects and programs. Browse, connect with mentors, and contribute to exciting initiatives.
+            Explore all projects and programs. Browse and contribute to exciting initiatives.
           </p>
         </div>
         

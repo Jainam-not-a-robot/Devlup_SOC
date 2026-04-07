@@ -17,12 +17,12 @@ export const getRepoInfo = async (owner: string, repo: string) => {
   return res.json();
 };
 
-export const getOpenIssues = async (owner: string, repo: string) => {
+export const getIssues = async (owner: string, repo: string, state: 'open' | 'closed' | 'all' = 'open') => {
   const res = await fetch(
-    `${GITHUB_API}/repos/${owner}/${repo}/issues?state=open&per_page=20`,
+    `${GITHUB_API}/repos/${owner}/${repo}/issues?state=${state}&per_page=20`,
     { headers: getHeaders() }
   );
-  if (!res.ok) throw new Error('Failed to fetch issues');
+  if (!res.ok) throw new Error(`Failed to fetch ${state} issues`);
 
   const data = await res.json();
 

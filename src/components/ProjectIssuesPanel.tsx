@@ -1,11 +1,19 @@
 import { useState } from 'react';
 import { useGithubIssues } from '../hooks/useGithubIssues';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Search, X } from 'lucide-react';
 
 const ProjectIssuesPanel = ({ repoUrl }: { repoUrl: string }) => {
-  const { issues, repoStats, loading } = useGithubIssues(repoUrl);
+  const [issueState, setIssueState] = useState<'open' | 'closed' | 'all' | 'none'>('none');
+  const { issues, repoStats, loading } = useGithubIssues(repoUrl, issueState);
   const [expandedIssue, setExpandedIssue] = useState<number | null>(null);
+  const [issueSearchQuery, setIssueSearchQuery] = useState('');
 
-  if (loading) {
+  const filteredIssues = issues.filter((issue) =>
+    issueSearchQuery ? issue.number.toString().includes(issueSearchQuery) : true
+  );
+
+  if (loading && !repoStats) {
     return <div className="text-terminal-dim">Loading issues…</div>;
   }
 
@@ -61,11 +69,54 @@ const ProjectIssuesPanel = ({ repoUrl }: { repoUrl: string }) => {
       </div>
 
       {/* Issue list */}
-      {issues.length === 0 ? (
-        <div className="text-terminal-dim">No open issues 🎉</div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-6 mb-4 gap-3">
+        <h3 className="text-xl font-bold text-terminal-accent">Issues</h3>
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          {/* Search input */}
+          <div className="relative flex-1 sm:w-64">
+            <Search size={14} className="absolute left-2.5 top-2 text-terminal-dim" />
+            <input
+              type="text"
+              placeholder="Search by issue #"
+              value={issueSearchQuery}
+              onChange={(e) => setIssueSearchQuery(e.target.value)}
+              className="pl-8 pr-8 py-1.5 w-full text-sm text-terminal-text bg-terminal-dark border border-terminal-dim rounded focus:outline-none focus:border-terminal-accent placeholder:text-terminal-dim"
+            />
+            {issueSearchQuery && (
+              <button
+                className="absolute right-2.5 top-2 text-terminal-dim hover:text-terminal-text"
+                onClick={() => setIssueSearchQuery('')}
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          <Select value={issueState} onValueChange={(v: 'open' | 'closed' | 'all' | 'none') => setIssueState(v)}>
+            <SelectTrigger className="w-[110px] bg-terminal-dark border-terminal-dim h-8 text-sm shrink-0">
+              <SelectValue placeholder="State" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">None</SelectItem>
+              <SelectItem value="open">Open</SelectItem>
+              <SelectItem value="closed">Closed</SelectItem>
+              <SelectItem value="all">All</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="text-terminal-dim">Loading issues...</div>
+      ) : issueState === 'none' ? (
+        null
+      ) : filteredIssues.length === 0 ? (
+        <div className="text-terminal-dim">
+          {issueSearchQuery ? 'No matching issues found.' : `No ${issueState === 'all' ? 'issues found' : `${issueState} issues`} ${issueState === 'open' ? '🎉' : ''}`}
+        </div>
       ) : (
         <div className="space-y-4">
-          {issues.map(issue => {
+          {filteredIssues.map((issue: any) => {
             const isExpanded = expandedIssue === issue.id;
 
             return (

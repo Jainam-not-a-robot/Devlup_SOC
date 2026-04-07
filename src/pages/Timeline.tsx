@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { getTheme } from "../config/themes";
+import { useState, useEffect } from "react";
+import { fetchTimelines } from "../services/apiClient";
 
 // --- Types ---
 interface TimelineMilestone {
@@ -71,59 +73,58 @@ const Timeline = () => {
   };
 
   // --- Data ---
-  const programs: ProgramTimeline[] = [
-    {
-      name: "Winter of Code",
-      milestones: [
-        {
-          id: "woc-proposals",
-          title: "Proposal Submission",
-          date: "Till 20th December",
-          endDate: "20th December",
-          description: "We accept proposals from contributors",
-          icon: FileText,
-          status: "ongoing"
-        },
-        {
-          id: "woc-landing",
-          title: "Learning Phase",
-          date: "1st Week of January",
-          endDate: "5th January",
-          description: "Contributors learn and research about project and tech stack",
-          icon: Rocket,
-          status: "upcoming"
-        },
-        {
-          id: "woc-start",
-          title: "Project Work Begins",
-          date: "1st week of January",
-          description: "Selected contributors start working on projects",
-          icon: CheckCircle2,
-          status: "upcoming"
-        },
-        {
-          id: "woc-mid",
-          title: "Mid Evaluations",
-          date: "Tentative",
-          description: "Mid-term evaluation of project progress",
-          icon: Flag,
-           status: "upcoming"
-        },
-        {
-          id: "woc-end",
-          title: "Program Ends",
-          date: "Mid March",
-          description: "Winter of Code program concludes",
-          icon: Award,
-           status: "upcoming"
-        },
-      ],
-    },
-    {
-      name: "Summer of Code",
-      milestones: [], // Empty milestones triggers "Coming Soon"
-    },
-  ];
+  const [programs, setPrograms] = useState<ProgramTimeline[]>([
+    { name: "Winter of Code", milestones: [] },
+    { name: "Summer of Code", milestones: [] }
+  ]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadTimelines = async () => {
+      try {
+        const data = await fetchTimelines();
+        const formattedMilestones: TimelineMilestone[] = data.map((t: any) => ({
+          id: t.time_id,
+          title: t.timeline_topic,
+          date: t.start_date,
+          endDate: t.end_date,
+          description: t.timeline_description,
+          icon: FileText, 
+        }));
+        
+        formattedMilestones.forEach(m => {
+          m.status = calculateStatus(m.date, m.endDate);
+        });
+
+        const groupedPrograms: Record<string, TimelineMilestone[]> = {};
+        data.forEach((t: any, index: number) => {
+           const progName = t.program_name || 'Winter of Code';
+           if (!groupedPrograms[progName]) {
+              groupedPrograms[progName] = [];
+           }
+           groupedPrograms[progName].push(formattedMilestones[index]);
+        });
+        
+        let newPrograms = Object.entries(groupedPrograms).map(([name, milestones]) => ({
+           name, milestones
+        }));
+        
+        if (newPrograms.length === 0) {
+           newPrograms = [
+             { name: "Winter of Code", milestones: [] },
+             { name: "Summer of Code", milestones: [] }
+           ];
+        }
+
+        setPrograms(newPrograms);
+      } catch (error) {
+        console.error("Failed to fetch timelines:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadTimelines();
+  }, []);
 
   const currentTheme = getTheme();
   const isWinter = currentTheme === 1;
@@ -160,6 +161,9 @@ const Timeline = () => {
         <TerminalHeader title="Program Timeline" />
         <div className="terminal-body min-h-[600px] p-4 sm:p-6 scrollbar-hide relative">
           
+            {loading && <p className="text-terminal-dim text-center py-4">Loading timeline...</p>}
+            {!loading && (
+              <>
             {/* Header */}
             <div className="flex items-center gap-3 mb-12">
               <div className="p-2 bg-terminal-accent/10 rounded-lg">
@@ -342,6 +346,8 @@ const Timeline = () => {
                 )}
               </div>
             ))}
+          </>
+        )}
         </div>
       </div>
     </div>

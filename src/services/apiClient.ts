@@ -123,4 +123,27 @@ export const deleteMentor = async (id: string) => {
   return response.data;
 };
 
+// ===========================
+// ADMIN: Timeline CRUD
+// ===========================
+export const fetchTimelines = async () => {
+  const response = await apiClient.get('/timeline');
+  return response.data;
+};
+
+export const createTimeline = async (data: any) => {
+  const response = await apiClient.post('/timeline', data);
+  return response.data;
+};
+
+export const updateTimeline = async (id: string, data: any) => {
+  const response = await apiClient.put(`/timeline/${id}`, data);
+  return response.data;
+};
+
+export const deleteTimeline = async (id: string) => {
+  const response = await apiClient.delete(`/timeline/${id}`);
+  return response.data;
+};
+
 export default apiClient;

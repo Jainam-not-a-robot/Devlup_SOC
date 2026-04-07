@@ -5,6 +5,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import Home from "./pages/Home";
+import Mentors from "./pages/Mentors";
+import Leaderboard from "./pages/Leaderboard";
+import ApplyFormPage from "./pages/ApplyFormPage";
 import Projects from "./pages/Projects";
 import NotFound from "./pages/NotFound";
 import ProjectDetail from "./pages/ProjectDetail";
@@ -12,7 +15,9 @@ import ApplyPage from "./pages/ApplyPage";
 import Contact from "./pages/Contact";
 import Stats from "./pages/Stats";
 import Timeline from "./pages/Timeline";
+import AdminPanel from "./pages/AdminPanel";
 import { TerminalProvider } from "./context/TerminalContext";
+import { AuthProvider } from "./context/AuthContext";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import AnalyticsTracker from "./components/AnalyticsTracker";
@@ -21,6 +26,8 @@ import SnowEffect from "./components/SnowEffect";
 import { ThemeProvider, useTheme } from "./components/ThemeProvider";
 import Entry3D from "./pages/Entry3D";
 import EntryLoader from "./pages/EntryLoader";
+import LoginModal from "./components/LoginModal";
+import ProtectedRoute from "./components/ProtectedRoute";
 import {
   LAST_CONTENT_ROUTE_KEY,
   MONITOR_EMBED_QUERY_KEY,
@@ -101,6 +108,8 @@ const AppContent = () => {
           <Route path="/projects/completed" element={<Projects />} />
           <Route path="/projects/archived" element={<Projects />} />
           <Route path="/projects/:projectId" element={<ProjectDetail />} />
+          <Route path="/mentors" element={<Mentors />} />
+          <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/apply" element={<ApplyPage />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/stats" element={<Stats />} />
@@ -126,15 +135,17 @@ const App = () => (
       <Toaster />
       <Sonner />
       <ThemeProvider>
-        <TerminalProvider>
-          <BrowserRouter>
-            <ShortcutProvider>
-              <AppContent />
-              {/* Add analytics tracker to record page visits */}
-              <AnalyticsTracker />
-            </ShortcutProvider>
-          </BrowserRouter>
-        </TerminalProvider>
+        <AuthProvider>
+          <TerminalProvider>
+            <BrowserRouter>
+              <ShortcutProvider>
+                <AppContent />
+                {/* Add analytics tracker to record page visits */}
+                <AnalyticsTracker />
+              </ShortcutProvider>
+            </BrowserRouter>
+          </TerminalProvider>
+        </AuthProvider>
       </ThemeProvider>
     </TooltipProvider>
   </QueryClientProvider>

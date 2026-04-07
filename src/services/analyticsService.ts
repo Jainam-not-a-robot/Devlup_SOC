@@ -34,12 +34,24 @@ export const getSessionId = (): string => {
   return sessionId;
 };
 
-// Record a page visit to Google Sheet
+// Record a page visit to Google Sheet or Backend
 export const recordPageVisit = async (page: string): Promise<boolean> => {
   try {
     const sessionId = getSessionId();
     const timestamp = new Date().toISOString();
     const referrer = document.referrer || '';
+    
+    const useBackend = import.meta.env.VITE_USE_BACKEND === 'true';
+    if (useBackend) {
+        const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+        await axios.post(`${backendUrl}/stats/visit`, {
+            page,
+            timestamp,
+            sessionId,
+            referrer
+        });
+        return true;
+    }
     
     // Using the CSV export URL of your Google Sheet to append data
     // We'll be using a Google Apps Script web app to handle writing data
@@ -91,32 +103,37 @@ const parseCSVLine = (line: string): string[] => {
   return result;
 };
 
-// Fetch analytics data from Google Sheet
+// Fetch analytics data from Google Sheet or Backend
 export const fetchAnalyticsData = async (): Promise<AnalyticsData | null> => {
   try {
-    const csvUrl = import.meta.env.VITE_GOOGLE_SHEETS_CSV_URL || '';
-    
-    if (!csvUrl) {
-      console.warn('Google Sheets CSV URL not configured');
-      return null;
-    }
-    
-    // We'll be using a separate sheet for analytics within the same Google Sheets file
-    // The regular CSV export URL with &sheet=Analytics to get the analytics sheet
-    const analyticsSheetUrl = `${csvUrl}&gid=${import.meta.env.VITE_ANALYTICS_SHEET_GID}&output=csv`;
-    
-    const response = await axios.get(analyticsSheetUrl);
-    
-    // Process the CSV data
-    const lines = response.data.split('\n');
-    if (lines.length < 2) {
-      return {
-        totalVisits: 0,
-        uniqueVisitors: 0,
-        pageVisits: {},
-        visitsByDay: {},
-        visitsByHour: {}
-      };
+    const useBackend = import.meta.env.VITE_USE_BACKEND === 'true';
+    let rawVisits: any[] = [];
+
+    if (useBackend) {
+      const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const response = await axios.get(`${backendUrl}/stats/visits`);
+      rawVisits = response.data;
+    } else {
+      const csvUrl = import.meta.env.VITE_GOOGLE_SHEETS_CSV_URL || '';
+      if (!csvUrl) {
+        console.warn('Google Sheets CSV URL not configured');
+        return null;
+      }
+      const analyticsSheetUrl = `${csvUrl}&gid=${import.meta.env.VITE_ANALYTICS_SHEET_GID}&output=csv`;
+      const response = await axios.get(analyticsSheetUrl);
+      
+      const lines = response.data.split('\n');
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line.trim()) continue;
+        const parts = parseCSVLine(line);
+        rawVisits.push({
+          page: parts[0] || '/',
+          timestamp: parts[1] || '',
+          sessionId: parts[2] || '',
+          referrer: parts[3] || ''
+        });
+      }
     }
     
     // Parse the analytics data
@@ -125,14 +142,10 @@ export const fetchAnalyticsData = async (): Promise<AnalyticsData | null> => {
     const visitsByDay: Record<string, number> = {};
     const visitsByHour: Record<string, number> = {};
     
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i];
-      if (!line.trim()) continue;
-      
-      const parts = parseCSVLine(line);
-      const page = parts[0] || '/';
-      const timestamp = parts[1] || '';
-      const sessionId = parts[2] || '';
+    for (const visit of rawVisits) {
+      const page = visit.page || '/';
+      const timestamp = visit.timestamp || '';
+      const sessionId = visit.sessionId || '';
       
       // Count page visits
       pageVisits[page] = (pageVisits[page] || 0) + 1;
@@ -164,7 +177,7 @@ export const fetchAnalyticsData = async (): Promise<AnalyticsData | null> => {
     }
     
     return {
-      totalVisits: Math.max(0, lines.length - 1), // Subtract header row
+      totalVisits: rawVisits.length,
       uniqueVisitors: sessionIds.size,
       pageVisits,
       visitsByDay,

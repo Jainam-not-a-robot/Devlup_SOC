@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from './use-toast';
+import { useAuth } from '../context/AuthContext';
 
 interface ShortcutRoute {
   key: string;
@@ -10,6 +11,7 @@ interface ShortcutRoute {
   ctrlKey?: boolean;
   shiftKey?: boolean;
   focusTerminal?: boolean;
+  action?: () => void;
 }
 
 /**
@@ -22,6 +24,7 @@ export function useKeyboardShortcuts() {
   const navigate = useNavigate();
   const shortcutsToastIdRef = useRef<string | null>(null);
   const shortcutsDismissRef = useRef<(() => void) | null>(null);
+  const auth = useAuth(); // Load the AuthContext
 
   useEffect(() => {
     // Define the navigation shortcuts
@@ -32,8 +35,26 @@ export function useKeyboardShortcuts() {
       { key: 't', route: '/timeline', description: 'Timeline', altKey: true },
       { key: 's', route: '/stats', description: 'Stats', altKey: true },
       { key: 'c', route: '/contact', description: 'Contact', altKey: true },
+      { key: 'm', route: '/mentors', description: 'Mentors', altKey: true },
       { key: 't', route: '/', description: 'Terminal View', altKey: true, shiftKey: true, focusTerminal: true },
       { key: '/', route: '/', description: 'Help', altKey: true, shiftKey: true },
+      { key: 'l', route: '/leaderboard', description: 'Leaderboard', altKey: true },
+      // Admin Panel Access
+      { 
+        key: 'A', 
+        route: '', 
+        description: 'Admin Access', 
+        altKey: true, 
+        shiftKey: true,
+        action: () => {
+          if (auth.isAuthenticated) {
+            navigate('/admin');
+            toast({ title: "Navigation", description: "Navigated to Admin Dashboard", duration: 2000 });
+          } else {
+            auth.setLoginModalOpen(true);
+          }
+        }
+      }
     ];
 
     // Handle keyboard events
@@ -66,25 +87,30 @@ export function useKeyboardShortcuts() {
 
       if (shortcut) {
         event.preventDefault();
-        navigate(shortcut.route);
-        
-        // If this shortcut should focus the terminal, do so after navigation
-        if (shortcut.focusTerminal) {
-          // Wait for navigation to complete, then focus the terminal input
-          setTimeout(() => {
-            const terminalInput = document.querySelector('.terminal-input') as HTMLInputElement;
-            if (terminalInput) {
-              terminalInput.focus();
-            }
-          }, 100);
+
+        if (shortcut.action) {
+           shortcut.action();
+        } else {
+           navigate(shortcut.route);
+  
+          // If this shortcut should focus the terminal, do so after navigation
+          if (shortcut.focusTerminal) {
+            // Wait for navigation to complete, then focus the terminal input
+            setTimeout(() => {
+              const terminalInput = document.querySelector('.terminal-input') as HTMLInputElement;
+              if (terminalInput) {
+                terminalInput.focus();
+              }
+            }, 100);
+          }
+  
+          // Show a toast notification
+          toast({
+            title: "Navigation",
+            description: `Navigated to ${shortcut.description}`,
+            duration: 2000,
+          });
         }
-        
-        // Show a toast notification
-        toast({
-          title: "Navigation",
-          description: `Navigated to ${shortcut.description}`,
-          duration: 2000,
-        });
       }
     };
 
@@ -93,7 +119,7 @@ export function useKeyboardShortcuts() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [navigate]);
+  }, [navigate, auth]);
 
   // Return a method to display the help toast with all shortcuts (toggleable)
   const showShortcutsHelp = () => {
@@ -117,6 +143,8 @@ export function useKeyboardShortcuts() {
           <p><kbd className="px-1 bg-terminal-dim rounded">Alt+T</kbd> - Timeline</p>
           <p><kbd className="px-1 bg-terminal-dim rounded">Alt+S</kbd> - Stats</p>
           <p><kbd className="px-1 bg-terminal-dim rounded">Alt+C</kbd> - Contact</p>
+          <p><kbd className="px-1 bg-terminal-dim rounded">Alt+M</kbd> - Mentors</p>
+          <p><kbd className="px-1 bg-terminal-dim rounded">Alt+L</kbd> - Leaderboard</p>
           <p><kbd className="px-1 bg-terminal-dim rounded">Alt+Shift+T</kbd> - Terminal View</p>
         </div>
       ),

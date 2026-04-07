@@ -2,12 +2,15 @@ import { Html, useGLTF } from "@react-three/drei";
 import { createPortal, useThree } from "@react-three/fiber";
 import { Fragment, memo, useEffect, useMemo, useState, useRef } from "react";
 import { GLTFLoader, KTX2Loader } from "three-stdlib";
-import { AxesHelper, DoubleSide, Mesh, MeshStandardMaterial, Object3D, Vector3, Raycaster, Vector2, Group } from "three";
+import { AxesHelper, DoubleSide, Mesh, MeshStandardMaterial, Object3D, Vector3, Raycaster, Vector2, Group, RepeatWrapping, SRGBColorSpace } from "three";
 
 type RoomProps = {
   onMonitorClick: (point: Vector3, normal: Vector3) => void;
   onSeatClick?: (point: Vector3) => void;
   monitorUrl?: string | null;
+  lampSpotEnabled?: boolean;
+  isDay?: boolean;
+  ambientIntensity?: number;
 };
 
 type MonitorSurfaceProps = {
@@ -26,7 +29,8 @@ type DebugNodeInfo = {
 
 const ROOM_SCALE = 0.5;
 const ROOM_POSITION: [number, number, number] = [0, -1, 0];
-const ROOM_ENVIRONMENT_INTENSITY = 0.05;
+const DAY_ROOM_ENVIRONMENT_INTENSITY = 0.45;
+const NIGHT_ROOM_ENVIRONMENT_INTENSITY = 0.08;
 const ROOM_EMISSIVE_INTENSITY_MULTIPLIER = 1;
 const MONITOR_CLICK_PADDING = 0.08;
 const MONITOR_CLICK_DEPTH_TOLERANCE = 0.8;
@@ -42,24 +46,17 @@ const MONITOR_WEBPAGE_TRANSFORM = {
 };
 const MONITOR_BACKLIGHT = {
   color: "#2563eb",
-  intensity: 40,
+  intensity: 20,
   width: 1.5,
   height: 0.9,
   position: [0, 0, -0.18] as [number, number, number],
   rotation: [0, 0, 0] as [number, number, number],
 };
-const LAMP_LIGHT = {
-  color: "#ff9a3c",
-  intensity: 10,
-  distance: 2.2,
-  decay: 2.4,
-  position: [-1.85, -0.35, -1.25] as [number, number, number],
-};
 const ROOM_BORDER_LIGHTS = [
   {
     key: "back",
     color: "#ef4444",
-    intensity: 30,
+    intensity: 14,
     width: 14,
     height: 0.18,
     position: [0.15, 4, -5] as [number, number, number],
@@ -68,7 +65,7 @@ const ROOM_BORDER_LIGHTS = [
   {
     key: "front",
     color: "#ef4444",
-    intensity: 14,
+    intensity: 7,
     width: 14,
     height: 0.18,
     position: [0.15, 5, 4] as [number, number, number],
@@ -77,13 +74,34 @@ const ROOM_BORDER_LIGHTS = [
   {
     key: "right",
     color: "#ef4444",
-    intensity: 14,
+    intensity: 7,
     width: 10,
     height: 0.18,
-    position: [7, 4.85, 0] as [number, number, number],
-    rotation: [0, -Math.PI / 2, 0] as [number, number, number],
+    position: [-7, 4.15, 5] as [number, number, number],
+    rotation: [0, 0, 0] as [number, number, number],
   },
 ] as const;
+const FILMIC_SRGB_MATERIALS = new Set(["material004", "material081", "material082"]);
+const RIGHT_POSTER_LIGHT = {
+  color: "#ec2020",
+  intensity: 8,
+  distance: 4,
+  decay: 2,
+  position: [0.15, 1.75, 4] as [number, number, number],
+};
+const LAMP_PRACTICAL_LIGHT = {
+  bulbColor: "#ffbe6b",
+  shadeColor: "#ff9f43",
+  bulbIntensity: 2.8,
+  bulbDistance: 2.1,
+  bulbDecay: 2.2,
+  spotIntensity: 16,
+  spotDistance: 6.5,
+  spotDecay: 2.8,
+  spotAngle: 0.5,
+  spotPenumbra: 0.78,
+};
+const REPEATED_TEXTURE_MATERIALS = new Set(["material.012", "material.013"]);
 
 function getMeshDimensions(mesh: Mesh) {
   mesh.geometry.computeBoundingBox();
@@ -107,10 +125,11 @@ function getMeshDimensions(mesh: Mesh) {
 function getMonitorFocusPoint(mesh: Mesh) {
   mesh.updateWorldMatrix(true, false);
   const dimensions = getMeshDimensions(mesh);
+  const monitorSurfaceZOffset = 0.05;
   const localCenter = new Vector3(
-    dimensions.center.x,
-    dimensions.center.y,
-    dimensions.frontZ,
+    dimensions.center.x + dimensions.size.x * MONITOR_WEBPAGE_TRANSFORM.position.x,
+    dimensions.center.y + dimensions.size.y * MONITOR_WEBPAGE_TRANSFORM.position.y,
+    dimensions.frontZ + MONITOR_WEBPAGE_TRANSFORM.position.z + monitorSurfaceZOffset,
   );
   return localCenter.applyMatrix4(mesh.matrixWorld);
 }
@@ -223,9 +242,20 @@ function DebugSceneGraph({ nodes }: { nodes: DebugNodeInfo[] }) {
   );
 }
 
-function Room({ onMonitorClick, onSeatClick, monitorUrl }: RoomProps) {
+function Room({
+  onMonitorClick,
+  onSeatClick,
+  monitorUrl,
+  lampSpotEnabled = true,
+  isDay = true,
+  ambientIntensity = 0.08,
+}: RoomProps) {
   const { gl, camera, scene, pointer } = useThree(); 
   const roomRef = useRef<Group>(null);
+  const emissiveMaterialsRef = useRef<MeshStandardMaterial[]>([]);
+  const [lampSpotPosition, setLampSpotPosition] = useState<[number, number, number] | null>(null);
+  const [lampSpotTarget, setLampSpotTarget] = useState<[number, number, number] | null>(null);
+  const lampSpotTargetObject = useMemo(() => new Object3D(), []);
   
   const ktx2Loader = useMemo(
     () => new KTX2Loader().setTranscoderPath("/basis/").detectSupport(gl),
@@ -277,7 +307,49 @@ function Room({ onMonitorClick, onSeatClick, monitorUrl }: RoomProps) {
   }, [ktx2Loader]);
 
   useEffect(() => {
+    if (!roomRef.current) return;
+
+    let lampLightNode: Object3D | null = null;
+    let lidNode: Object3D | null = null;
+
+    gltfScene.traverse((obj) => {
+      const name = (obj.name || "").toLowerCase();
+      if (!lampLightNode && name === "lamplight") {
+        lampLightNode = obj;
+      }
+      if (!lidNode && name === "lid") {
+        lidNode = obj;
+      }
+    });
+
+    if (!lampLightNode || !lidNode) return;
+
+    gltfScene.updateMatrixWorld(true);
+    roomRef.current.updateWorldMatrix(true, true);
+
+    const lampWorld = lampLightNode.getWorldPosition(new Vector3());
+    const lidWorld = lidNode.getWorldPosition(new Vector3());
+
+    const lampLocal = roomRef.current.worldToLocal(lampWorld.clone());
+    const lidLocal = roomRef.current.worldToLocal(lidWorld.clone());
+
+    setLampSpotPosition([lampLocal.x, lampLocal.y, lampLocal.z]);
+    setLampSpotTarget([lidLocal.x, lidLocal.y, lidLocal.z]);
+  }, [gltfScene]);
+
+  useEffect(() => {
+    if (!lampSpotTarget) return;
+    lampSpotTargetObject.position.set(
+      lampSpotTarget[0],
+      lampSpotTarget[1],
+      lampSpotTarget[2],
+    );
+    lampSpotTargetObject.updateMatrixWorld();
+  }, [lampSpotTargetObject, lampSpotTarget]);
+
+  useEffect(() => {
     let foundMonitorMesh: Mesh | null = null;
+    emissiveMaterialsRef.current = [];
 
     gltfScene.traverse((obj) => {
       const mesh = obj as Mesh;
@@ -287,15 +359,70 @@ function Room({ onMonitorClick, onSeatClick, monitorUrl }: RoomProps) {
       mesh.castShadow = true;
       mesh.receiveShadow = true;
 
-      const applyDarkRoomMaterialTuning = (material: unknown) => {
-        if (!(material instanceof MeshStandardMaterial)) return;
+        const applyDarkRoomMaterialTuning = (material: unknown) => {
+          if (!(material instanceof MeshStandardMaterial)) return;
 
-        material.envMapIntensity = ROOM_ENVIRONMENT_INTENSITY;
+          const materialName = (material.name || "").toLowerCase();
+
+        material.envMapIntensity = isDay ? DAY_ROOM_ENVIRONMENT_INTENSITY : NIGHT_ROOM_ENVIRONMENT_INTENSITY;
         material.roughness = Math.max(material.roughness, 0.92);
         material.metalness = Math.min(material.metalness, 0.04);
         material.emissiveIntensity *= ROOM_EMISSIVE_INTENSITY_MULTIPLIER;
-        material.needsUpdate = true;
-      };
+
+        if (material.emissiveMap || material.emissiveIntensity > 0 || material.emissive.getHex() !== 0) {
+          material.userData.baseEmissiveIntensity =
+            typeof material.userData.baseEmissiveIntensity === "number"
+              ? material.userData.baseEmissiveIntensity
+              : material.emissiveIntensity;
+          emissiveMaterialsRef.current.push(material);
+        }
+
+          if (REPEATED_TEXTURE_MATERIALS.has(materialName)) {
+            const textures = [
+              material.map,
+            material.emissiveMap,
+            material.normalMap,
+            material.roughnessMap,
+            material.metalnessMap,
+            material.aoMap,
+          ];
+
+          textures.forEach((texture) => {
+            if (!texture) return;
+            texture.wrapS = RepeatWrapping;
+            texture.wrapT = RepeatWrapping;
+            texture.repeat.set(-12.8, -12.8);
+            texture.rotation = Math.PI / 2;
+            texture.center.set(0.5, 0.5);
+            texture.needsUpdate = true;
+            });
+          }
+
+          if (FILMIC_SRGB_MATERIALS.has(materialName)) {
+            if (material.map) {
+              material.map.colorSpace = SRGBColorSpace;
+              material.map.needsUpdate = true;
+            }
+            if (material.emissiveMap) {
+              material.emissiveMap.colorSpace = SRGBColorSpace;
+              material.emissiveMap.needsUpdate = true;
+            }
+
+            if (!material.userData.filmicSrgbApplied) {
+              material.color.convertSRGBToLinear();
+              material.emissive.convertSRGBToLinear();
+              material.userData.filmicSrgbApplied = true;
+            }
+            material.roughness = Math.min(material.roughness, 0.42);
+            material.metalness = Math.max(material.metalness, 0.08);
+            material.envMapIntensity = Math.max(
+              material.envMapIntensity,
+              isDay ? 1.25 : 0.16,
+            );
+          }
+
+          material.needsUpdate = true;
+        };
 
       if (Array.isArray(mesh.material)) {
         mesh.material.forEach(applyDarkRoomMaterialTuning);
@@ -322,7 +449,18 @@ function Room({ onMonitorClick, onSeatClick, monitorUrl }: RoomProps) {
     } else {
       setMonitorMesh(null);
     }
-  }, [gltfScene]);
+  }, [gltfScene, isDay]);
+
+  useEffect(() => {
+    emissiveMaterialsRef.current.forEach((material) => {
+      const baseEmissiveIntensity =
+        typeof material.userData.baseEmissiveIntensity === "number"
+          ? material.userData.baseEmissiveIntensity
+          : material.emissiveIntensity;
+      material.emissiveIntensity = isDay ? 0 : baseEmissiveIntensity;
+      material.needsUpdate = true;
+    });
+  }, [isDay]);
 
   // --- CENTER-CAMERA RAYCASTER ---
   useEffect(() => {
@@ -369,25 +507,52 @@ function Room({ onMonitorClick, onSeatClick, monitorUrl }: RoomProps) {
 
   return (
     <group scale={ROOM_SCALE} position={ROOM_POSITION} ref={roomRef}>
-      <ambientLight intensity={0.08} color="#f8f1e3" />
-      <pointLight
-        color={LAMP_LIGHT.color}
-        intensity={LAMP_LIGHT.intensity}
-        distance={LAMP_LIGHT.distance}
-        decay={LAMP_LIGHT.decay}
-        position={LAMP_LIGHT.position}
-      />
-      {ROOM_BORDER_LIGHTS.map((light) => (
-        <rectAreaLight
-          key={light.key}
-          color={light.color}
-          intensity={light.intensity}
-          width={light.width}
-          height={light.height}
-          position={light.position}
-          rotation={light.rotation}
+      <ambientLight intensity={ambientIntensity} color={isDay ? "#f8f1e3" : "#cbd5ff"} />
+      {!isDay && (
+        <pointLight
+          color={RIGHT_POSTER_LIGHT.color}
+          intensity={RIGHT_POSTER_LIGHT.intensity}
+          distance={RIGHT_POSTER_LIGHT.distance}
+          decay={RIGHT_POSTER_LIGHT.decay}
+          position={RIGHT_POSTER_LIGHT.position}
         />
-      ))}
+      )}
+      {lampSpotEnabled && lampSpotPosition && lampSpotTarget && (
+        <primitive object={lampSpotTargetObject} />
+      )}
+      {lampSpotEnabled && lampSpotPosition && lampSpotTarget && (
+        <pointLight
+          position={lampSpotPosition}
+          color={LAMP_PRACTICAL_LIGHT.bulbColor}
+          intensity={LAMP_PRACTICAL_LIGHT.bulbIntensity}
+          distance={LAMP_PRACTICAL_LIGHT.bulbDistance}
+          decay={LAMP_PRACTICAL_LIGHT.bulbDecay}
+        />
+      )}
+      {lampSpotEnabled && lampSpotPosition && lampSpotTarget && (
+        <spotLight
+          position={lampSpotPosition}
+          target={lampSpotTargetObject}
+          color={LAMP_PRACTICAL_LIGHT.shadeColor}
+          intensity={LAMP_PRACTICAL_LIGHT.spotIntensity}
+          distance={LAMP_PRACTICAL_LIGHT.spotDistance}
+          decay={LAMP_PRACTICAL_LIGHT.spotDecay}
+          angle={LAMP_PRACTICAL_LIGHT.spotAngle}
+          penumbra={LAMP_PRACTICAL_LIGHT.spotPenumbra}
+        />
+      )}
+      {!isDay &&
+        ROOM_BORDER_LIGHTS.map((light) => (
+          <rectAreaLight
+            key={light.key}
+            color={light.color}
+            intensity={light.intensity}
+            width={light.width}
+            height={light.height}
+            position={light.position}
+            rotation={light.rotation}
+          />
+        ))}
       
       <primitive
         object={gltfScene}
@@ -400,7 +565,7 @@ function Room({ onMonitorClick, onSeatClick, monitorUrl }: RoomProps) {
           if (monitorHit) {
             const material = monitorHit.object.material;
             if (material instanceof MeshStandardMaterial) {
-              material.emissiveIntensity = 0.28;
+              material.emissiveIntensity = isDay ? 0 : 0.28;
               material.needsUpdate = true;
             }
           }
@@ -414,7 +579,7 @@ function Room({ onMonitorClick, onSeatClick, monitorUrl }: RoomProps) {
           if (monitorHit) {
             const material = monitorHit.object.material;
             if (material instanceof MeshStandardMaterial) {
-              material.emissiveIntensity = 0.12;
+              material.emissiveIntensity = isDay ? 0 : 0.12;
               material.needsUpdate = true;
             }
           }
@@ -424,14 +589,16 @@ function Room({ onMonitorClick, onSeatClick, monitorUrl }: RoomProps) {
       {monitorMesh && (
         createPortal(
           <Fragment>
-            <rectAreaLight
-              color={MONITOR_BACKLIGHT.color}
-              intensity={MONITOR_BACKLIGHT.intensity}
-              width={MONITOR_BACKLIGHT.width}
-              height={MONITOR_BACKLIGHT.height}
-              position={MONITOR_BACKLIGHT.position}
-              rotation={MONITOR_BACKLIGHT.rotation}
-            />
+            {!isDay && (
+              <rectAreaLight
+                color={MONITOR_BACKLIGHT.color}
+                intensity={MONITOR_BACKLIGHT.intensity}
+                width={MONITOR_BACKLIGHT.width}
+                height={MONITOR_BACKLIGHT.height}
+                position={MONITOR_BACKLIGHT.position}
+                rotation={MONITOR_BACKLIGHT.rotation}
+              />
+            )}
             {monitorUrl && <MonitorSurface mesh={monitorMesh} url={monitorUrl} occludeRef={roomRef} />}
           </Fragment>,
           monitorMesh,

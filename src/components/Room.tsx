@@ -33,7 +33,7 @@ type DebugNodeInfo = {
 const ROOM_SCALE = 0.5;
 const ROOM_POSITION: [number, number, number] = [0, -1, 0];
 const DAY_ROOM_ENVIRONMENT_INTENSITY = 0.45;
-const NIGHT_ROOM_ENVIRONMENT_INTENSITY = 0.08;
+const NIGHT_ROOM_ENVIRONMENT_INTENSITY = 0.05;
 const ROOM_EMISSIVE_INTENSITY_MULTIPLIER = 1;
 const DEBUG_SCENE_GRAPH = false; // Disabled the axes and labels!
 const normalizeInteractiveMeshName = (name: string) =>
@@ -84,7 +84,7 @@ const ROOM_BORDER_LIGHTS = [
   {
     key: "right",
     color: "#ef4444",
-    intensity: 7,
+    intensity: 25,
     width: 10,
     height: 0.18,
     position: [-7, 4.15, 5] as [number, number, number],
@@ -125,6 +125,10 @@ const WINTER_WINDOW_GLOW = {
   distance: 6,
   decay: 2.1,
   position: [-5.9, 4.2, 2.8] as [number, number, number],
+};
+const NIGHT_MOONLIGHT_FILL = {
+  color: "#b7c8e8",
+  intensity: 0.1,
 };
 
 function getMeshDimensions(mesh: Mesh) {
@@ -492,7 +496,7 @@ function Room({
   const ambientColor = isWinter
     ? (isDay ? "#dce7f5" : "#9ab0cf")
     : (isDay ? "#fff1d8" : "#cbd5ff");
-  const showNightAccentLights = !isDay && isSummer;
+  const showNightAccentLights = !isDay;
   const showWinterWindowGlow = isWinter;
   const lampBulbIntensity = isWinter
     ? LAMP_PRACTICAL_LIGHT.bulbIntensity * 1.12
@@ -558,6 +562,12 @@ function Room({
   return (
     <group scale={ROOM_SCALE} position={ROOM_POSITION} ref={roomRef}>
       <ambientLight intensity={ambientIntensity} color={ambientColor} />
+      {!isDay && (
+        <ambientLight
+          intensity={NIGHT_MOONLIGHT_FILL.intensity}
+          color={NIGHT_MOONLIGHT_FILL.color}
+        />
+      )}
       {showNightAccentLights && (
         <pointLight
           color={RIGHT_POSTER_LIGHT.color}

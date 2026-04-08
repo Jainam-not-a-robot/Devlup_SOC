@@ -30,9 +30,16 @@ import {
 import { useDayNightCycle } from "../hooks/useDayNightCycle";
 import { isSummer, isWinter } from "../config/sceneTheme";
 
+const ENTRY_BOUNDARY_PADDING = {
+  tableFrontZ: 0.18,
+};
+
 const ENTRY_ROOM_BOUNDARIES = {
   x: { min: -5.2, max: 6.25 },
-  z: { min: -10.10, max: 1.25 },
+  z: {
+    min: -10.10,
+    max: -1.081 - ENTRY_BOUNDARY_PADDING.tableFrontZ,
+  },
   standingHeight: 1.6,
 };
 
@@ -178,8 +185,8 @@ function DayNightScene({
         key={environmentMap}
         files={environmentMap}
         background
-        backgroundIntensity={isDay ? (isWinterTheme ? 0.85 : 1.28) : 0.22}
-        environmentIntensity={isDay ? (isWinterTheme ? 0.95 : 1.58) : (isWinterTheme ? 0.12 : 0.18)}
+        backgroundIntensity={isDay ? (isWinterTheme ? 0.85 : 1.28) : 0.18}
+        environmentIntensity={isDay ? (isWinterTheme ? 0.95 : 1.58) : (isWinterTheme ? 0.08 : 0.12)}
       />
       <primitive object={windowLightTarget} />
       <directionalLight
@@ -200,7 +207,7 @@ function DayNightScene({
         shadow-camera-near={0.5}
         shadow-camera-far={30}
       />
-      {isWinterTheme && (
+      {isWinterTheme && isDay && (
         <>
           <AtmosphericFogVolume />
           <VolumetricLightBeam
@@ -208,7 +215,7 @@ function DayNightScene({
             target={WINDOW_LIGHT_TARGET}
             color={WINTER_WINDOW_BEAM_COLOR}
             radius={3.8}
-            opacity={isDay ? 0.1 : 0.16}
+            opacity={0.1}
           />
         </>
       )}

@@ -35,7 +35,7 @@ export function useKeyboardShortcuts() {
       { key: 's', route: '/stats', description: 'Stats', altKey: true },
       { key: 'c', route: '/contact', description: 'Contact', altKey: true },
       { key: 'm', route: '/mentors', description: 'Mentors', altKey: true },
-      { key: 't', route: '/', description: 'Terminal View', altKey: true, shiftKey: true, focusTerminal: true },
+      { key: 't', route: '/terminal', description: 'Terminal View', altKey: true, shiftKey: true, focusTerminal: true },
       { key: '/', route: '/', description: 'Help', altKey: true, shiftKey: true },
       { key: 'l', route: '/leaderboard', description: 'Leaderboard', altKey: true },
       // Admin Panel Access
@@ -65,10 +65,14 @@ export function useKeyboardShortcuts() {
         return;
       }
 
-      if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 's') {
+      if (event.altKey && event.shiftKey && event.key.toLowerCase() === 's') {
         event.preventDefault();
 
         const isEntryPage = location.pathname === '/entry';
+        if (!isEntryPage) {
+          const currentRoute = `${location.pathname}${location.search}${location.hash}`;
+          window.sessionStorage.setItem(LAST_CONTENT_ROUTE_KEY, currentRoute);
+        }
         const destination = isEntryPage
           ? window.sessionStorage.getItem(LAST_CONTENT_ROUTE_KEY) || '/home'
           : '/entry';
@@ -158,7 +162,7 @@ export function useKeyboardShortcuts() {
           <p><kbd className="px-1 bg-terminal-dim rounded">Alt+M</kbd> - Mentors</p>
           <p><kbd className="px-1 bg-terminal-dim rounded">Alt+L</kbd> - Leaderboard</p>
           <p><kbd className="px-1 bg-terminal-dim rounded">Alt+Shift+T</kbd> - Terminal View</p>
-          <p><kbd className="px-1 bg-terminal-dim rounded">Ctrl+Shift+S</kbd> - 3D Entry</p>
+          <p><kbd className="px-1 bg-terminal-dim rounded">Alt+Shift+S</kbd> - 3D Entry</p>
         </div>
       ),
       duration: 5000,

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from './use-toast';
+import { LAST_CONTENT_ROUTE_KEY } from '../constants/navigation';
 
 interface ShortcutRoute {
   key: string;
@@ -20,6 +21,7 @@ interface ShortcutRoute {
  */
 export function useKeyboardShortcuts() {
   const navigate = useNavigate();
+  const location = useLocation();
   const shortcutsToastIdRef = useRef<string | null>(null);
   const shortcutsDismissRef = useRef<(() => void) | null>(null);
 
@@ -44,6 +46,23 @@ export function useKeyboardShortcuts() {
         event.target instanceof HTMLTextAreaElement ||
         (event.target as HTMLElement).isContentEditable
       ) {
+        return;
+      }
+
+      if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+
+        const isEntryPage = location.pathname === '/entry';
+        const destination = isEntryPage
+          ? window.sessionStorage.getItem(LAST_CONTENT_ROUTE_KEY) || '/home'
+          : '/entry';
+
+        navigate(destination);
+        toast({
+          title: 'Navigation',
+          description: isEntryPage ? 'Exited 3D Entry' : 'Entered 3D Entry',
+          duration: 2000,
+        });
         return;
       }
 
@@ -93,7 +112,7 @@ export function useKeyboardShortcuts() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [navigate]);
+  }, [location.pathname, navigate]);
 
   // Return a method to display the help toast with all shortcuts (toggleable)
   const showShortcutsHelp = () => {
@@ -118,6 +137,7 @@ export function useKeyboardShortcuts() {
           <p><kbd className="px-1 bg-terminal-dim rounded">Alt+S</kbd> - Stats</p>
           <p><kbd className="px-1 bg-terminal-dim rounded">Alt+C</kbd> - Contact</p>
           <p><kbd className="px-1 bg-terminal-dim rounded">Alt+Shift+T</kbd> - Terminal View</p>
+          <p><kbd className="px-1 bg-terminal-dim rounded">Ctrl+Shift+S</kbd> - 3D Entry</p>
         </div>
       ),
       duration: 5000,

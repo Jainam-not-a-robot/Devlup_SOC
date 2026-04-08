@@ -2,15 +2,18 @@ import { Html, useGLTF } from "@react-three/drei";
 import { createPortal, useThree } from "@react-three/fiber";
 import { Fragment, memo, useEffect, useMemo, useState, useRef } from "react";
 import { GLTFLoader, KTX2Loader } from "three-stdlib";
-import { AxesHelper, DoubleSide, Mesh, MeshStandardMaterial, Object3D, Vector3, Raycaster, Vector2, Group, RepeatWrapping, SRGBColorSpace } from "three";
+import { AxesHelper, Mesh, MeshStandardMaterial, Object3D, Vector3, Raycaster, Vector2, Group, RepeatWrapping, SRGBColorSpace } from "three";
 
 type RoomProps = {
   onMonitorClick: (point: Vector3, normal: Vector3) => void;
   onSeatClick?: (point: Vector3) => void;
+  onLampClick?: () => void;
   monitorUrl?: string | null;
   lampSpotEnabled?: boolean;
   isDay?: boolean;
   ambientIntensity?: number;
+  isWinter?: boolean;
+  isSummer?: boolean;
 };
 
 type MonitorSurfaceProps = {
@@ -32,9 +35,16 @@ const ROOM_POSITION: [number, number, number] = [0, -1, 0];
 const DAY_ROOM_ENVIRONMENT_INTENSITY = 0.45;
 const NIGHT_ROOM_ENVIRONMENT_INTENSITY = 0.08;
 const ROOM_EMISSIVE_INTENSITY_MULTIPLIER = 1;
-const MONITOR_CLICK_PADDING = 0.08;
-const MONITOR_CLICK_DEPTH_TOLERANCE = 0.8;
 const DEBUG_SCENE_GRAPH = false; // Disabled the axes and labels!
+const normalizeInteractiveMeshName = (name: string) =>
+  name.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+const LAMP_TOGGLE_MESH_NAMES = new Set([
+  "Cylinder001_07 - Default_0",
+  "Sphere001_07 - Default_0",
+  "Box002_07 - Default_0",
+  "Cylinder003_07 - Default_0",
+].map(normalizeInteractiveMeshName));
 const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
 
 const MONITOR_WEBPAGE_TRANSFORM = {
@@ -102,6 +112,20 @@ const LAMP_PRACTICAL_LIGHT = {
   spotPenumbra: 0.78,
 };
 const REPEATED_TEXTURE_MATERIALS = new Set(["material.012", "material.013"]);
+const SUMMER_NIGHT_WINDOW_GLOW = {
+  color: "#ffc98a",
+  intensity: 4.5,
+  distance: 7,
+  decay: 1.8,
+  position: [-5.9, 4.2, 2.8] as [number, number, number],
+};
+const WINTER_WINDOW_GLOW = {
+  color: "#ffd1a1",
+  intensity: 2.8,
+  distance: 6,
+  decay: 2.1,
+  position: [-5.9, 4.2, 2.8] as [number, number, number],
+};
 
 function getMeshDimensions(mesh: Mesh) {
   mesh.geometry.computeBoundingBox();
@@ -245,10 +269,13 @@ function DebugSceneGraph({ nodes }: { nodes: DebugNodeInfo[] }) {
 function Room({
   onMonitorClick,
   onSeatClick,
+  onLampClick,
   monitorUrl,
   lampSpotEnabled = true,
   isDay = true,
   ambientIntensity = 0.08,
+  isWinter = false,
+  isSummer = true,
 }: RoomProps) {
   const { gl, camera, scene, pointer } = useThree(); 
   const roomRef = useRef<Group>(null);
@@ -462,6 +489,22 @@ function Room({
     });
   }, [isDay]);
 
+  const ambientColor = isWinter
+    ? (isDay ? "#dce7f5" : "#9ab0cf")
+    : (isDay ? "#fff1d8" : "#cbd5ff");
+  const showNightAccentLights = !isDay && isSummer;
+  const showWinterWindowGlow = isWinter;
+  const lampBulbIntensity = isWinter
+    ? LAMP_PRACTICAL_LIGHT.bulbIntensity * 1.12
+    : (showNightAccentLights ? LAMP_PRACTICAL_LIGHT.bulbIntensity * 1.28 : LAMP_PRACTICAL_LIGHT.bulbIntensity);
+  const lampSpotIntensity = isWinter
+    ? LAMP_PRACTICAL_LIGHT.spotIntensity * 0.7
+    : (showNightAccentLights ? LAMP_PRACTICAL_LIGHT.spotIntensity * 1.18 : LAMP_PRACTICAL_LIGHT.spotIntensity);
+  const lampSpotPenumbra = isWinter ? 0.92 : 0.58;
+  const monitorGlowIntensity = showNightAccentLights
+    ? MONITOR_BACKLIGHT.intensity * 1.35
+    : (isWinter ? MONITOR_BACKLIGHT.intensity * 0.82 : MONITOR_BACKLIGHT.intensity);
+
   // --- CENTER-CAMERA RAYCASTER ---
   useEffect(() => {
     const raycaster = new Raycaster();
@@ -494,8 +537,15 @@ function Room({
         return (hit.object.name || "").toLowerCase().includes("seat");
       });
 
+      const lampHit = intersects.find((hit) => {
+        const name = normalizeInteractiveMeshName(hit.object.name || "");
+        return LAMP_TOGGLE_MESH_NAMES.has(name);
+      });
+
       if (monitorHit && monitorMesh) {
         onMonitorClick(getMonitorFocusPoint(monitorMesh), getMonitorNormal(monitorMesh));
+      } else if (lampHit) {
+        onLampClick?.();
       } else if (seatHit) {
         onSeatClick?.(seatHit.point.clone());
       }
@@ -503,18 +553,36 @@ function Room({
 
     gl.domElement.addEventListener('click', handleGlobalClick);
     return () => gl.domElement.removeEventListener('click', handleGlobalClick);
-  }, [gl, camera, scene, pointer, monitorMesh, onMonitorClick, onSeatClick]);
+  }, [gl, camera, scene, pointer, monitorMesh, onLampClick, onMonitorClick, onSeatClick]);
 
   return (
     <group scale={ROOM_SCALE} position={ROOM_POSITION} ref={roomRef}>
-      <ambientLight intensity={ambientIntensity} color={isDay ? "#f8f1e3" : "#cbd5ff"} />
-      {!isDay && (
+      <ambientLight intensity={ambientIntensity} color={ambientColor} />
+      {showNightAccentLights && (
         <pointLight
           color={RIGHT_POSTER_LIGHT.color}
           intensity={RIGHT_POSTER_LIGHT.intensity}
           distance={RIGHT_POSTER_LIGHT.distance}
           decay={RIGHT_POSTER_LIGHT.decay}
           position={RIGHT_POSTER_LIGHT.position}
+        />
+      )}
+      {showWinterWindowGlow && (
+        <pointLight
+          color={WINTER_WINDOW_GLOW.color}
+          intensity={WINTER_WINDOW_GLOW.intensity}
+          distance={WINTER_WINDOW_GLOW.distance}
+          decay={WINTER_WINDOW_GLOW.decay}
+          position={WINTER_WINDOW_GLOW.position}
+        />
+      )}
+      {showNightAccentLights && (
+        <pointLight
+          color={SUMMER_NIGHT_WINDOW_GLOW.color}
+          intensity={SUMMER_NIGHT_WINDOW_GLOW.intensity}
+          distance={SUMMER_NIGHT_WINDOW_GLOW.distance}
+          decay={SUMMER_NIGHT_WINDOW_GLOW.decay}
+          position={SUMMER_NIGHT_WINDOW_GLOW.position}
         />
       )}
       {lampSpotEnabled && lampSpotPosition && lampSpotTarget && (
@@ -524,7 +592,7 @@ function Room({
         <pointLight
           position={lampSpotPosition}
           color={LAMP_PRACTICAL_LIGHT.bulbColor}
-          intensity={LAMP_PRACTICAL_LIGHT.bulbIntensity}
+          intensity={lampBulbIntensity}
           distance={LAMP_PRACTICAL_LIGHT.bulbDistance}
           decay={LAMP_PRACTICAL_LIGHT.bulbDecay}
         />
@@ -534,14 +602,20 @@ function Room({
           position={lampSpotPosition}
           target={lampSpotTargetObject}
           color={LAMP_PRACTICAL_LIGHT.shadeColor}
-          intensity={LAMP_PRACTICAL_LIGHT.spotIntensity}
+          castShadow={isSummer && !isDay}
+          intensity={lampSpotIntensity}
           distance={LAMP_PRACTICAL_LIGHT.spotDistance}
           decay={LAMP_PRACTICAL_LIGHT.spotDecay}
           angle={LAMP_PRACTICAL_LIGHT.spotAngle}
-          penumbra={LAMP_PRACTICAL_LIGHT.spotPenumbra}
+          penumbra={lampSpotPenumbra}
+          shadow-mapSize-width={isSummer && !isDay ? 768 : 512}
+          shadow-mapSize-height={isSummer && !isDay ? 768 : 512}
+          shadow-bias={-0.00008}
+          shadow-normalBias={0.02}
+          shadow-radius={isSummer && !isDay ? 1.5 : 1}
         />
       )}
-      {!isDay &&
+      {showNightAccentLights &&
         ROOM_BORDER_LIGHTS.map((light) => (
           <rectAreaLight
             key={light.key}
@@ -592,7 +666,7 @@ function Room({
             {!isDay && (
               <rectAreaLight
                 color={MONITOR_BACKLIGHT.color}
-                intensity={MONITOR_BACKLIGHT.intensity}
+                intensity={monitorGlowIntensity}
                 width={MONITOR_BACKLIGHT.width}
                 height={MONITOR_BACKLIGHT.height}
                 position={MONITOR_BACKLIGHT.position}

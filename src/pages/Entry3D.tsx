@@ -1,8 +1,16 @@
 ﻿import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Environment } from "@react-three/drei";
 import { useNavigate } from "react-router-dom";
-import { Color, MathUtils, Object3D, Quaternion, Vector3 } from "three";
+import {
+  AdditiveBlending,
+  BackSide,
+  Color,
+  MathUtils,
+  Object3D,
+  ShaderMaterial,
+  Vector3,
+} from "three";
 
 import Home from "./Home";
 import Room from "../components/Room";
@@ -14,15 +22,13 @@ import ProximityInteraction, {
   type InteractionTarget,
 } from "../components/ProximityInteraction";
 import { LiquidGlassCard } from "../components/ui/liquid-glass-card";
-import { Switch } from "../components/ui/switch";
 import {
   LAST_CONTENT_ROUTE_KEY,
   MONITOR_EMBED_QUERY_KEY,
   MONITOR_EMBED_QUERY_VALUE,
 } from "../constants/navigation";
 import { useDayNightCycle } from "../hooks/useDayNightCycle";
-
-import useSound from "use-sound";
+import { isSummer, isWinter } from "../config/sceneTheme";
 
 const ENTRY_ROOM_BOUNDARIES = {
   x: { min: -5.2, max: 6.25 },
@@ -70,9 +76,13 @@ const CAMERA_COORDINATE_UPDATE_INTERVAL = 1 / 4;
 const DAY_NIGHT_TRANSITION_SPEED = 0.04;
 const WINDOW_LIGHT_POSITION: [number, number, number] = [-7.4, 4.9, 4.8];
 const WINDOW_LIGHT_TARGET: [number, number, number] = [0.4, 1.6, -2.4];
+const SUMMER_SUN_LIGHT_POSITION: [number, number, number] = [-3.2, 7.2, 8.8];
+const SUMMER_SUN_LIGHT_TARGET: [number, number, number] = [1.8, 0.6, -3.6];
 const ENTRY_PANEL_RADIUS = "16px";
 const ENTRY_PANEL_FONT = '"Verdana", "Geneva", sans-serif';
 const ENTRY_GUIDE_HEADING_FONT = '"Arial Black", "Arial Bold", Arial, sans-serif';
+const WINTER_FOG_COLOR = "#9eb4c7";
+const WINTER_WINDOW_BEAM_COLOR = "#ffe2b8";
 
 type Coordinates = {
   x: number;
@@ -129,30 +139,36 @@ function DayNightScene({
   isDay,
   sunIntensity,
   environmentMap,
-}: ReturnType<typeof useDayNightCycle>) {
+  isWinterTheme,
+}: ReturnType<typeof useDayNightCycle> & { isWinterTheme: boolean }) {
   const windowLightRef = useRef<any>(null);
   const windowLightTarget = useMemo(() => new Object3D(), []);
+  const nextLightColor = useMemo(() => new Color(), []);
+  const activeLightPosition = isWinterTheme || !isDay ? WINDOW_LIGHT_POSITION : SUMMER_SUN_LIGHT_POSITION;
+  const activeLightTarget = isWinterTheme || !isDay ? WINDOW_LIGHT_TARGET : SUMMER_SUN_LIGHT_TARGET;
 
   useEffect(() => {
     windowLightTarget.position.set(
-      WINDOW_LIGHT_TARGET[0],
-      WINDOW_LIGHT_TARGET[1],
-      WINDOW_LIGHT_TARGET[2],
+      activeLightTarget[0],
+      activeLightTarget[1],
+      activeLightTarget[2],
     );
     windowLightTarget.updateMatrixWorld();
-  }, [windowLightTarget]);
+  }, [activeLightTarget, windowLightTarget]);
 
   useFrame(() => {
     if (windowLightRef.current) {
+      const lightColor = isWinterTheme
+        ? (isDay ? "#d8e6f2" : WINTER_WINDOW_BEAM_COLOR)
+        : (isDay ? "#ffe7b0" : "#ffc98a");
+
       windowLightRef.current.intensity = MathUtils.lerp(
         windowLightRef.current.intensity,
         sunIntensity,
         DAY_NIGHT_TRANSITION_SPEED,
       );
-      windowLightRef.current.color.lerp(
-        new Color(isDay ? "#fff4d6" : "#9bbcff"),
-        DAY_NIGHT_TRANSITION_SPEED,
-      );
+      nextLightColor.set(lightColor);
+      windowLightRef.current.color.lerp(nextLightColor, DAY_NIGHT_TRANSITION_SPEED);
     }
   });
 
@@ -162,33 +178,201 @@ function DayNightScene({
         key={environmentMap}
         files={environmentMap}
         background
-        backgroundIntensity={isDay ? 1.2 : 0.22}
-        environmentIntensity={isDay ? 1.5 : 0.14}
+        backgroundIntensity={isDay ? (isWinterTheme ? 0.85 : 1.28) : 0.22}
+        environmentIntensity={isDay ? (isWinterTheme ? 0.95 : 1.58) : (isWinterTheme ? 0.12 : 0.18)}
       />
       <primitive object={windowLightTarget} />
       <directionalLight
         ref={windowLightRef}
-        position={WINDOW_LIGHT_POSITION}
+        position={activeLightPosition}
         target={windowLightTarget}
         castShadow
         intensity={sunIntensity}
-        color={isDay ? "#fff4d6" : "#9bbcff"}
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
-        shadow-bias={-0.00025}
+        color={isWinterTheme ? (isDay ? "#d8e6f2" : WINTER_WINDOW_BEAM_COLOR) : (isDay ? "#ffe7b0" : "#ffc98a")}
+        shadow-mapSize-width={isWinterTheme ? 1024 : 1536}
+        shadow-mapSize-height={isWinterTheme ? 1024 : 1536}
+        shadow-bias={-0.00022}
+        shadow-radius={isWinterTheme ? 8 : 2}
+        shadow-camera-left={-12}
+        shadow-camera-right={12}
+        shadow-camera-top={12}
+        shadow-camera-bottom={-12}
+        shadow-camera-near={0.5}
+        shadow-camera-far={30}
       />
+      {isWinterTheme && (
+        <>
+          <AtmosphericFogVolume />
+          <VolumetricLightBeam
+            start={WINDOW_LIGHT_POSITION}
+            target={WINDOW_LIGHT_TARGET}
+            color={WINTER_WINDOW_BEAM_COLOR}
+            radius={3.8}
+            opacity={isDay ? 0.1 : 0.16}
+          />
+        </>
+      )}
     </>
+  );
+}
+
+function AtmosphericFogVolume() {
+  const { camera } = useThree();
+  const material = useMemo(
+    () =>
+      new ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        side: BackSide,
+        uniforms: {
+          fogColor: { value: new Color(WINTER_FOG_COLOR) },
+          cameraPositionWorld: { value: new Vector3() },
+          baseDensity: { value: 0.09 },
+          groundDensity: { value: 0.18 },
+        },
+        vertexShader: `
+          varying vec3 vWorldPosition;
+
+          void main() {
+            vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+            vWorldPosition = worldPosition.xyz;
+            gl_Position = projectionMatrix * viewMatrix * worldPosition;
+          }
+        `,
+        fragmentShader: `
+          varying vec3 vWorldPosition;
+
+          uniform vec3 fogColor;
+          uniform vec3 cameraPositionWorld;
+          uniform float baseDensity;
+          uniform float groundDensity;
+
+          void main() {
+            float distanceToCamera = distance(cameraPositionWorld, vWorldPosition);
+            float distanceFactor = clamp(distanceToCamera / 28.0, 0.0, 1.0);
+            float nearGround = 1.0 - smoothstep(-0.5, 9.0, vWorldPosition.y);
+            float density = mix(baseDensity, groundDensity, nearGround);
+            float alpha = density * (0.3 + distanceFactor * 0.9);
+            alpha = clamp(alpha, 0.0, 0.18);
+            gl_FragColor = vec4(fogColor, alpha);
+          }
+        `,
+      }),
+    [],
+  );
+
+  useFrame(() => {
+    material.uniforms.cameraPositionWorld.value.copy(camera.position);
+  });
+
+  useEffect(() => {
+    return () => {
+      material.dispose();
+    };
+  }, [material]);
+
+  return (
+    <>
+      <mesh position={[0, 3, -1]} scale={[26, 15, 26]} frustumCulled={false}>
+        <sphereGeometry args={[1, 40, 24]} />
+        <primitive object={material} attach="material" />
+      </mesh>
+      <mesh position={[0, 0.1, -1]} rotation={[-Math.PI / 2, 0, 0]} frustumCulled={false}>
+        <circleGeometry args={[18, 48]} />
+        <meshBasicMaterial color={WINTER_FOG_COLOR} transparent opacity={0.07} depthWrite={false} />
+      </mesh>
+    </>
+  );
+}
+
+function VolumetricLightBeam({
+  start,
+  target,
+  color,
+  radius,
+  opacity,
+}: {
+  start: [number, number, number];
+  target: [number, number, number];
+  color: string;
+  radius: number;
+  opacity: number;
+}) {
+  const beamRef = useRef<Object3D>(null);
+  const source = useMemo(() => new Vector3(...start), [start]);
+  const destination = useMemo(() => new Vector3(...target), [target]);
+  const length = useMemo(() => source.distanceTo(destination), [destination, source]);
+  const material = useMemo(
+    () =>
+      new ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        blending: AdditiveBlending,
+        uniforms: {
+          beamColor: { value: new Color(color) },
+          maxRadius: { value: radius },
+          beamOpacity: { value: opacity },
+        },
+        vertexShader: `
+          varying vec2 vUv;
+          varying vec3 vLocalPosition;
+
+          void main() {
+            vUv = uv;
+            vLocalPosition = position;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          varying vec2 vUv;
+          varying vec3 vLocalPosition;
+
+          uniform vec3 beamColor;
+          uniform float maxRadius;
+          uniform float beamOpacity;
+
+          void main() {
+            float axialFade = pow(1.0 - vUv.y, 1.35);
+            float coneRadius = max(0.15, maxRadius * (1.0 - vUv.y));
+            float radial = length(vLocalPosition.xz) / coneRadius;
+            float radialFade = pow(max(0.0, 1.0 - radial), 2.4);
+            float alpha = radialFade * axialFade * beamOpacity;
+            if (alpha <= 0.001) discard;
+            gl_FragColor = vec4(beamColor, alpha);
+          }
+        `,
+      }),
+    [color, opacity, radius],
+  );
+
+  useEffect(() => {
+    if (!beamRef.current) return;
+    beamRef.current.position.copy(source);
+    beamRef.current.lookAt(destination);
+  }, [destination, source]);
+
+  useEffect(() => {
+    return () => {
+      material.dispose();
+    };
+  }, [material]);
+
+  return (
+    <group ref={beamRef}>
+      <mesh position={[0, 0, -length * 0.5]} rotation={[-Math.PI / 2, 0, 0]} frustumCulled={false}>
+        <coneGeometry args={[radius, length, 28, 1, true]} />
+        <primitive object={material} attach="material" />
+      </mesh>
+    </group>
   );
 }
 
 export default function Entry3D() {
   const navigate = useNavigate();
   const dayNightCycle = useDayNightCycle();
-  
-  const [play, { stop }] = useSound("/music.mp3", {
-    volume: 0.03,
-    loop: true,
-  });
+  const toneMappingExposure = dayNightCycle.isDay
+    ? (isWinter ? 0.24 : 0.34)
+    : (isWinter ? 0.18 : 0.23);
   
   const [isEntering, setIsEntering] = useState(false);
   const [portalTarget, setPortalTarget] = useState<Vector3 | null>(null);
@@ -220,9 +404,8 @@ export default function Entry3D() {
   }, [returnRoute]);
   
   const handlePortalFinish = useCallback(() => {
-    stop(); 
     navigate(returnRoute);
-  }, [navigate, returnRoute, stop]);
+  }, [navigate, returnRoute]);
 
   const handleMonitorInteract = useCallback((point?: Vector3, normal?: Vector3) => {
     if (isEntering) return;
@@ -283,10 +466,24 @@ export default function Entry3D() {
   
   const isSeated = !!seatPosition;
   const shouldWarmHome = isEntering && returnRoute === "/home";
+  const entryGuideSteps = useMemo(() => {
+    const steps = [
+      "Click to lock your cursor into the scene.",
+      "Move with WASD and hold Shift to sprint.",
+      "Click the monitor to enter the portal.",
+      "Click the lamp to switch it on or off.",
+    ];
 
-  useEffect(() => {
-    play();
-  }, [play]);
+    if (isSeated) {
+      steps.push("Press Space to stand up.");
+    } else {
+      steps.push("Press Enter to sit when you are near the chair.");
+    }
+
+    steps.push("Press Esc to unlock the cursor.");
+
+    return steps;
+  }, [isSeated]);
 
   useEffect(() => {
     const updateTime = () => {
@@ -309,28 +506,20 @@ export default function Entry3D() {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // 1. Stand up using Space
+      if (
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement ||
+        (event.target as HTMLElement).isContentEditable
+      ) {
+        return;
+      }
+
       if (event.code === "Space" && seatPosition) {
         event.preventDefault();
         handleStandUp();
       }
-
-      // 2. Lock/Unlock viewing mode on "L" 
-      if ((event.code === "KeyL" || event.key === "l" || event.key === "L") && !isEntering) {
-        event.preventDefault(); 
-        const canvas = document.querySelector('canvas');
-        if (canvas) {
-          // Allow the L key to TOGGLE the lock on and off
-          if (document.pointerLockElement) {
-            document.exitPointerLock();
-          } else {
-            canvas.requestPointerLock();
-          }
-        }
-      }
     };
 
-    // 3. Lock viewing mode on Click 
     const handleMouseDown = (event: MouseEvent) => {
       const target = event.target as HTMLElement | null;
       if (target?.closest("[data-ui-control='true']")) {
@@ -371,11 +560,12 @@ export default function Entry3D() {
       }}
     >
       <Canvas
+        shadows
         camera={{
           position: [ENTRY_SPAWN_POINT.x, ENTRY_SPAWN_POINT.y, ENTRY_SPAWN_POINT.z],
           fov: 60,
         }}
-        gl={{ toneMappingExposure: 0.28 }}
+        gl={{ toneMappingExposure }}
         style={{
           width: "100%",
           height: "100%",
@@ -386,7 +576,7 @@ export default function Entry3D() {
       >
         <CameraCoordinatesTracker onChange={setCoordinates} />
 
-        <DayNightScene {...dayNightCycle} />
+        <DayNightScene {...dayNightCycle} isWinterTheme={isWinter} />
         <ProximityInteraction
           enabled={!isEntering && !isSeated}
           targets={interactionTargets}
@@ -395,8 +585,13 @@ export default function Entry3D() {
         <Room
           isDay={dayNightCycle.isDay}
           ambientIntensity={dayNightCycle.ambientIntensity}
+          isWinter={isWinter}
+          isSummer={isSummer}
           monitorUrl={monitorUrl}
           lampSpotEnabled={lampSpotEnabled}
+          onLampClick={() => {
+            setLampSpotEnabled((enabled) => !enabled);
+          }}
           onMonitorClick={(point, normal) => {
             handleMonitorInteract(point, normal);
           }}
@@ -405,12 +600,14 @@ export default function Entry3D() {
           }}
         />
 
-        <Snow
-          area={ENTRY_SNOW_SETTINGS.area}
-          particleCount={ENTRY_SNOW_SETTINGS.particleCount}
-          fallSpeed={ENTRY_SNOW_SETTINGS.fallSpeed}
-          size={ENTRY_SNOW_SETTINGS.size}
-        />
+        {isWinter && (
+          <Snow
+            area={ENTRY_SNOW_SETTINGS.area}
+            particleCount={ENTRY_SNOW_SETTINGS.particleCount}
+            fallSpeed={ENTRY_SNOW_SETTINGS.fallSpeed}
+            size={ENTRY_SNOW_SETTINGS.size}
+          />
+        )}
 
         <PortalEnter
           active={isEntering && !!portalTarget}
@@ -479,12 +676,11 @@ export default function Entry3D() {
           >
             Entry Guide
           </div>
-          <div>1) Click to lock your cursor into the scene.</div>
-          <div>2) Move with WASD and hold Shift to sprint.</div>
-          <div>3) Press L to toggle mouse-look on or off.</div>
-          <div>4) Click the monitor to enter the portal.</div>
-          <div>5) Sit near the chair with Enter or by clicking it.</div>
-          <div>6) Press Space to stand. Press Esc to unlock the cursor.</div>
+          {entryGuideSteps.map((step, index) => (
+            <div key={step}>
+              {index + 1}) {step}
+            </div>
+          ))}
         </div>
       </LiquidGlassCard>
 
@@ -581,36 +777,9 @@ export default function Entry3D() {
             letterSpacing: "0.02em",
           }}
         >
-          WASD to move | Click monitor to enter | Press L for mouse look
+          WASD to move | Click to lock | Click monitor to enter | Click lamp to toggle
         </div>
       </LiquidGlassCard>
-
-      <div
-        data-ui-control="true"
-        style={{
-          position: "absolute",
-          right: 16,
-          bottom: 16,
-          zIndex: 12,
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          border: `1px solid ${lampSpotEnabled ? "#f59e0b" : "#64748b"}`,
-          borderRadius: 999,
-          background: lampSpotEnabled ? "rgba(120, 53, 15, 0.88)" : "rgba(15, 23, 42, 0.88)",
-          color: "#f8fafc",
-          padding: "8px 12px",
-          fontSize: 12,
-          fontWeight: 700,
-        }}
-      >
-        <span>Lamp Spot</span>
-        <Switch
-          checked={lampSpotEnabled}
-          onCheckedChange={setLampSpotEnabled}
-          aria-label="Toggle lamp spot"
-        />
-      </div>
 
       {activeInteraction && !isEntering && !isSeated && (
         <div

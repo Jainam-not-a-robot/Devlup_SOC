@@ -32,7 +32,10 @@ import {
   LAST_CONTENT_ROUTE_KEY,
   MONITOR_EMBED_QUERY_KEY,
   MONITOR_EMBED_QUERY_VALUE,
+  PRESERVE_LAST_CONTENT_ROUTE_STATE,
 } from "./constants/navigation";
+import FormPage from './pages/form';
+
 
 const queryClient = new QueryClient();
 const WEBSITE_BACK_EXIT_STATE = "__devlupWebsiteBackExitState";
@@ -52,6 +55,16 @@ const AppContent = () => {
 
   useEffect(() => {
     if (isEntryPage || isMonitorEmbed) return;
+
+    if (
+      location.pathname === "/home" &&
+      location.state &&
+      typeof location.state === "object" &&
+      PRESERVE_LAST_CONTENT_ROUTE_STATE in location.state &&
+      location.state[PRESERVE_LAST_CONTENT_ROUTE_STATE]
+    ) {
+      return;
+    }
 
     const route = `${location.pathname}${location.search}${location.hash}`;
     window.sessionStorage.setItem(LAST_CONTENT_ROUTE_KEY, route);
@@ -107,6 +120,7 @@ const AppContent = () => {
           <Route path="/projects/ongoing" element={<Projects />} />
           <Route path="/projects/completed" element={<Projects />} />
           <Route path="/projects/archived" element={<Projects />} />
+          <Route path="/projects/issues" element={<Projects />} />
           <Route path="/projects/:projectId" element={<ProjectDetail />} />
           <Route path="/mentors" element={<Mentors />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
@@ -114,6 +128,10 @@ const AppContent = () => {
           <Route path="/contact" element={<Contact />} />
           <Route path="/stats" element={<Stats />} />
           <Route path="/timeline" element={<Timeline />} />
+          <Route path="/apply/:projectId" element={<ApplyPage />} />
+          <Route path="/apply/form" element={<FormPage />} />
+
+
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

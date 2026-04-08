@@ -8,7 +8,8 @@ const ApplyPage = () => {
   const location = useLocation();
   const { projects, handleContributorSubmit } = useTerminal();
 
-  const selectedProjectId = location.state?.selectedProjectId || "";
+  const selectedProjectId =
+    (location.state as { selectedProjectId?: string })?.selectedProjectId || '';
 
   return (
     <div className="min-h-screen bg-terminal/95 flex flex-col items-center p-2 sm:p-4">

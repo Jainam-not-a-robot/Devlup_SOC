@@ -16,9 +16,6 @@ interface ShortcutRoute {
 
 /**
  * Custom hook for keyboard navigation shortcuts
- * 
- * Registers keyboard shortcuts for quick navigation between routes
- * Displays toast notifications when shortcuts are activated
  */
 export function useKeyboardShortcuts() {
   const navigate = useNavigate();
@@ -57,9 +54,7 @@ export function useKeyboardShortcuts() {
       }
     ];
 
-    // Handle keyboard events
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Don't trigger shortcuts when typing in input fields, textareas, etc.
       if (
         event.target instanceof HTMLInputElement ||
         event.target instanceof HTMLTextAreaElement ||
@@ -68,12 +63,13 @@ export function useKeyboardShortcuts() {
         return;
       }
 
-      // Find the matching shortcut
-      // Sort shortcuts to check more specific ones (with shiftKey/ctrlKey) first
       const sortedShortcuts = [...shortcuts].sort((a, b) => {
-        // Prioritize shortcuts with shiftKey or ctrlKey defined
-        const aSpecificity = (a.shiftKey !== undefined ? 1 : 0) + (a.ctrlKey !== undefined ? 1 : 0);
-        const bSpecificity = (b.shiftKey !== undefined ? 1 : 0) + (b.ctrlKey !== undefined ? 1 : 0);
+        const aSpecificity =
+          (a.shiftKey !== undefined ? 1 : 0) +
+          (a.ctrlKey !== undefined ? 1 : 0);
+        const bSpecificity =
+          (b.shiftKey !== undefined ? 1 : 0) +
+          (b.ctrlKey !== undefined ? 1 : 0);
         return bSpecificity - aSpecificity;
       });
 
@@ -113,17 +109,13 @@ export function useKeyboardShortcuts() {
         }
       }
     };
-
-    // Add and remove the event listener
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [navigate, auth]);
 
-  // Return a method to display the help toast with all shortcuts (toggleable)
   const showShortcutsHelp = () => {
-    // If a shortcuts toast is already open, dismiss it
     if (shortcutsDismissRef.current) {
       shortcutsDismissRef.current();
       shortcutsDismissRef.current = null;
@@ -131,9 +123,8 @@ export function useKeyboardShortcuts() {
       return;
     }
 
-    // Otherwise, show the shortcuts toast
     const toastResult = toast({
-      title: "Keyboard Shortcuts",
+      title: 'Keyboard Shortcuts',
       description: (
         <div className="space-y-1">
           <p className="font-semibold">Navigation:</p>
@@ -156,7 +147,7 @@ export function useKeyboardShortcuts() {
         }
       },
     });
-    
+
     shortcutsToastIdRef.current = toastResult.id;
     shortcutsDismissRef.current = toastResult.dismiss;
   };

@@ -14,7 +14,7 @@ export interface ContributorData {
 
 interface ContributorFormProps {
   projects: { id: string; name: string }[];
-  onSubmit: (data: ContributorData) => Promise<void>;
+  onSubmit: (data: any) => Promise<void>;
   initialProjectId?: string;
 }
 

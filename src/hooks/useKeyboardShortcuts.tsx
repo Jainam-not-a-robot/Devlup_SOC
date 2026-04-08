@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from './use-toast';
 import { useAuth } from '../context/AuthContext';
+import { LAST_CONTENT_ROUTE_KEY } from '../constants/navigation';
 
 interface ShortcutRoute {
   key: string;
@@ -19,6 +20,7 @@ interface ShortcutRoute {
  */
 export function useKeyboardShortcuts() {
   const navigate = useNavigate();
+  const location = useLocation();
   const shortcutsToastIdRef = useRef<string | null>(null);
   const shortcutsDismissRef = useRef<(() => void) | null>(null);
   const auth = useAuth(); // Load the AuthContext
@@ -63,6 +65,25 @@ export function useKeyboardShortcuts() {
         return;
       }
 
+      if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+
+        const isEntryPage = location.pathname === '/entry';
+        const destination = isEntryPage
+          ? window.sessionStorage.getItem(LAST_CONTENT_ROUTE_KEY) || '/home'
+          : '/entry';
+
+        navigate(destination);
+        toast({
+          title: 'Navigation',
+          description: isEntryPage ? 'Exited 3D Entry' : 'Entered 3D Entry',
+          duration: 2000,
+        });
+        return;
+      }
+
+      // Find the matching shortcut
+      // Sort shortcuts to check more specific ones (with shiftKey/ctrlKey) first
       const sortedShortcuts = [...shortcuts].sort((a, b) => {
         const aSpecificity =
           (a.shiftKey !== undefined ? 1 : 0) +
@@ -113,7 +134,7 @@ export function useKeyboardShortcuts() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [navigate, auth]);
+  }, [location.pathname, navigate]);
 
   const showShortcutsHelp = () => {
     if (shortcutsDismissRef.current) {
@@ -137,6 +158,7 @@ export function useKeyboardShortcuts() {
           <p><kbd className="px-1 bg-terminal-dim rounded">Alt+M</kbd> - Mentors</p>
           <p><kbd className="px-1 bg-terminal-dim rounded">Alt+L</kbd> - Leaderboard</p>
           <p><kbd className="px-1 bg-terminal-dim rounded">Alt+Shift+T</kbd> - Terminal View</p>
+          <p><kbd className="px-1 bg-terminal-dim rounded">Ctrl+Shift+S</kbd> - 3D Entry</p>
         </div>
       ),
       duration: 5000,

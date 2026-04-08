@@ -1,20 +1,44 @@
 import SnowEffect from "../components/SnowEffect";
-import { mentors } from "../data/mentors";
 import { FaGithub, FaLinkedinIn, FaEnvelope } from "react-icons/fa";
 import { useTheme } from "../components/ThemeProvider";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { fetchMentors } from "../services/apiClient";
 
 const Mentors = () => {
   const { showSnow } = useTheme();
   const [selectedYear, setSelectedYear] = useState("All");
+  const [mentors, setMentors] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const years = ["All", ...new Set(mentors.map((m) => m.year))];
+  useEffect(() => {
+    const loadMentors = async () => {
+      try {
+        const data = await fetchMentors();
+        setMentors(data);
+      } catch (error) {
+        console.error("Failed to load mentors:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadMentors();
+  }, []);
+
+  const years = ["All", ...new Set(mentors.map((m) => String(m.year)))];
 
   const filteredMentors =
     selectedYear === "All"
       ? mentors
-      : mentors.filter((m) => m.year === selectedYear);
+      : mentors.filter((m) => String(m.year) === selectedYear);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-[var(--terminal-text)]">
+        Loading Mentors...
+      </div>
+    );
+  }
 
   return (
     <div
@@ -150,7 +174,7 @@ const Mentors = () => {
                 </h3>
 
                 <p className="text-sm text-[var(--terminal-dim)] mt-1">
-                  {mentor.expertise}
+                  {mentor.expertise || mentor.description}
                 </p>
 
                 <p className="text-sm mt-2 text-[var(--terminal-dim)]">

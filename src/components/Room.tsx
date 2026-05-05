@@ -8,12 +8,18 @@ type RoomProps = {
   onMonitorClick: (point: Vector3, normal: Vector3) => void;
   onSeatClick?: (point: Vector3) => void;
   onLampClick?: () => void;
+  onInteractionHintPointsChange?: (points: RoomInteractionHintPoints) => void;
   monitorUrl?: string | null;
   lampSpotEnabled?: boolean;
   isDay?: boolean;
   ambientIntensity?: number;
   isWinter?: boolean;
   isSummer?: boolean;
+};
+
+type RoomInteractionHintPoints = {
+  lamp?: [number, number, number];
+  monitor?: [number, number, number];
 };
 
 type MonitorSurfaceProps = {
@@ -274,6 +280,7 @@ function Room({
   onMonitorClick,
   onSeatClick,
   onLampClick,
+  onInteractionHintPointsChange,
   monitorUrl,
   lampSpotEnabled = true,
   isDay = true,
@@ -492,6 +499,26 @@ function Room({
       material.needsUpdate = true;
     });
   }, [isDay]);
+
+  useEffect(() => {
+    if (!onInteractionHintPointsChange) return;
+
+    const points: RoomInteractionHintPoints = {};
+
+    if (lampSpotPosition && roomRef.current) {
+      const lampWorldPosition = new Vector3(...lampSpotPosition);
+      roomRef.current.updateWorldMatrix(true, true);
+      roomRef.current.localToWorld(lampWorldPosition);
+      points.lamp = [lampWorldPosition.x, lampWorldPosition.y, lampWorldPosition.z];
+    }
+
+    if (monitorMesh) {
+      const monitorWorldPosition = getMonitorFocusPoint(monitorMesh);
+      points.monitor = [monitorWorldPosition.x, monitorWorldPosition.y, monitorWorldPosition.z];
+    }
+
+    onInteractionHintPointsChange(points);
+  }, [lampSpotPosition, monitorMesh, onInteractionHintPointsChange]);
 
   const ambientColor = isWinter
     ? (isDay ? "#dce7f5" : "#9ab0cf")

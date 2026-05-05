@@ -6,6 +6,7 @@ import {
   AdditiveBlending,
   BackSide,
   Color,
+  Group,
   MathUtils,
   Object3D,
   ShaderMaterial,
@@ -18,10 +19,14 @@ import Player from "../components/Player";
 import Snow from "../components/Snow";
 import PortalEnter from "../components/PortalEnter";
 import SmoothPointerLockControls from "../components/SmoothPointerLockControls";
+import EntryInstructionHUD, {
+  getNearestEntryHint,
+  type EntryHintZone,
+  type EntryInstructionHint,
+} from "../components/EntryInstructionHUD";
 import ProximityInteraction, {
   type InteractionTarget,
 } from "../components/ProximityInteraction";
-import { LiquidGlassCard } from "../components/ui/liquid-glass-card";
 import {
   LAST_CONTENT_ROUTE_KEY,
   MONITOR_EMBED_QUERY_KEY,
@@ -81,21 +86,45 @@ const ENTRY_SNOW_SETTINGS = {
 };
 const CAMERA_COORDINATE_UPDATE_INTERVAL = 1 / 4;
 const DAY_NIGHT_TRANSITION_SPEED = 0.04;
+const ENTRY_QUICK_START_AUTO_HIDE_MS = 8000;
 const WINDOW_LIGHT_POSITION: [number, number, number] = [-7.4, 4.9, 4.8];
 const WINDOW_LIGHT_TARGET: [number, number, number] = [0.4, 1.6, -2.4];
 const SUMMER_SUN_LIGHT_POSITION: [number, number, number] = [-3.2, 7.2, 8.8];
 const SUMMER_SUN_LIGHT_TARGET: [number, number, number] = [1.8, 0.6, -3.6];
-const ENTRY_PANEL_RADIUS = "16px";
-const ENTRY_PANEL_FONT = '"Verdana", "Geneva", sans-serif';
-const ENTRY_GUIDE_HEADING_FONT = '"Arial Black", "Arial Bold", Arial, sans-serif';
 const WINTER_FOG_COLOR = "#9eb4c7";
 const WINTER_WINDOW_BEAM_COLOR = "#ffe2b8";
+const ENTRY_CONTEXT_HINT_RANGES = {
+  lamp: 1.65,
+  monitor: 1.85,
+};
 
 type Coordinates = {
   x: number;
   y: number;
   z: number;
 };
+
+type EntryInteractionHintPoints = {
+  lamp?: [number, number, number];
+  monitor?: [number, number, number];
+};
+
+function areHintPointsEqual(
+  current: EntryInteractionHintPoints,
+  next: EntryInteractionHintPoints,
+) {
+  const pointKeys: Array<keyof EntryInteractionHintPoints> = ["lamp", "monitor"];
+
+  return pointKeys.every((key) => {
+    const currentPoint = current[key];
+    const nextPoint = next[key];
+
+    if (!currentPoint && !nextPoint) return true;
+    if (!currentPoint || !nextPoint) return false;
+
+    return currentPoint.every((value, index) => value === nextPoint[index]);
+  });
+}
 
 function SeatedCameraLock({ position }: { position: Vector3 }) {
   const { camera } = useThree();
@@ -305,7 +334,7 @@ function VolumetricLightBeam({
   radius: number;
   opacity: number;
 }) {
-  const beamRef = useRef<Object3D>(null);
+  const beamRef = useRef<Group>(null);
   const source = useMemo(() => new Vector3(...start), [start]);
   const destination = useMemo(() => new Vector3(...target), [target]);
   const length = useMemo(() => source.distanceTo(destination), [destination, source]);
@@ -386,13 +415,10 @@ export default function Entry3D() {
   const [seatPosition, setSeatPosition] = useState<Vector3 | null>(null);
   const [activeInteraction, setActiveInteraction] = useState<InteractionTarget | null>(null);
   const [lampSpotEnabled, setLampSpotEnabled] = useState(true);
-  const [currentTime, setCurrentTime] = useState(() =>
-    new Date().toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    }),
-  );
+  const lampSpotEnabledRef = useRef(lampSpotEnabled);
+  const [quickStartVisible, setQuickStartVisible] = useState(true);
+  const [instructionPanelVisible, setInstructionPanelVisible] = useState(false);
+  const [interactionHintPoints, setInteractionHintPoints] = useState<EntryInteractionHintPoints>({});
   const [coordinates, setCoordinates] = useState<Coordinates>({
     x: ENTRY_SPAWN_POINT.x,
     y: ENTRY_SPAWN_POINT.y,
@@ -413,6 +439,22 @@ export default function Entry3D() {
   const handlePortalFinish = useCallback(() => {
     navigate(returnRoute);
   }, [navigate, returnRoute]);
+
+  useEffect(() => {
+    lampSpotEnabledRef.current = lampSpotEnabled;
+  }, [lampSpotEnabled]);
+
+  const handleInteractionHintPointsChange = useCallback((points: EntryInteractionHintPoints) => {
+    setInteractionHintPoints((currentPoints) =>
+      areHintPointsEqual(currentPoints, points) ? currentPoints : points,
+    );
+  }, []);
+
+  const handleLampClick = useCallback(() => {
+    const nextLampState = !lampSpotEnabledRef.current;
+    lampSpotEnabledRef.current = nextLampState;
+    setLampSpotEnabled(nextLampState);
+  }, []);
 
   const handleMonitorInteract = useCallback((point?: Vector3, normal?: Vector3) => {
     if (isEntering) return;
@@ -448,6 +490,7 @@ export default function Entry3D() {
     if (canvas && document.pointerLockElement === null) {
       canvas.requestPointerLock();
     }
+
   }, [isEntering]);
 
   const handleStandUp = useCallback(() => {
@@ -473,41 +516,113 @@ export default function Entry3D() {
   
   const isSeated = !!seatPosition;
   const shouldWarmHome = isEntering && returnRoute === "/home";
-  const entryGuideSteps = useMemo(() => {
-    const steps = [
-      "Click to lock your cursor into the scene.",
-      "Move with WASD and hold Shift to sprint.",
-      "Click the monitor to enter the portal.",
-      "Click the lamp to switch it on or off.",
-    ];
-
-    if (isSeated) {
-      steps.push("Press Space to stand up.");
-    } else {
-      steps.push("Press Enter to sit when you are near the chair.");
+  const playerStatus = useMemo<EntryInstructionHint>(() => {
+    if (isEntering) {
+      return {
+        id: "player-entering",
+        label: "Player Status",
+        message: "Entering portal",
+        tone: "action",
+        icon: "monitor",
+        details: [
+          {
+            label: "Lamp",
+            message: lampSpotEnabled ? "On" : "Off",
+            icon: "lamp",
+          },
+        ],
+      };
     }
 
-    steps.push("Press Esc to unlock the cursor.");
+    return {
+      id: isSeated ? "player-seated" : "player-standing",
+      label: "Player Status",
+      message: isSeated ? "Seated" : "Standing",
+      tone: isSeated ? "action" : "movement",
+      icon: "chair",
+      details: [
+        {
+          label: "Lamp",
+          message: lampSpotEnabled ? "On" : "Off",
+          icon: "lamp",
+        },
+      ],
+    };
+  }, [isEntering, isSeated, lampSpotEnabled]);
 
-    return steps;
-  }, [isSeated]);
+  const entryContextHint = useMemo<EntryInstructionHint | null>(() => {
+    if (isEntering) return null;
+
+    if (isSeated) {
+      return {
+        id: "seated",
+        label: "Seated",
+        message: "to stand up",
+        keys: ["SPACE"],
+        tone: "action",
+        icon: "chair",
+      };
+    }
+
+    if (activeInteraction?.id === "seat") {
+      return {
+        id: "chair",
+        label: "Chair",
+        message: "to sit",
+        keys: ["ENTER"],
+        tone: "interaction",
+        icon: "chair",
+      };
+    }
+
+    const hintZones: EntryHintZone[] = [];
+
+    if (interactionHintPoints.lamp) {
+      hintZones.push({
+        id: "lamp",
+        label: "Lamp",
+        message: lampSpotEnabled ? "lamp to turn off" : "lamp to turn on",
+        keys: ["CLICK"],
+        tone: "interaction",
+        icon: "lamp",
+        position: interactionHintPoints.lamp,
+        range: ENTRY_CONTEXT_HINT_RANGES.lamp,
+        priority: 1,
+      });
+    }
+
+    if (interactionHintPoints.monitor) {
+      hintZones.push({
+        id: "monitor",
+        label: "Monitor",
+        message: "monitor to enter main website",
+        keys: ["CLICK"],
+        tone: "action",
+        icon: "monitor",
+        position: interactionHintPoints.monitor,
+        range: ENTRY_CONTEXT_HINT_RANGES.monitor,
+        priority: 2,
+      });
+    }
+
+    return getNearestEntryHint({ x: coordinates.x, z: coordinates.z }, hintZones);
+  }, [
+    activeInteraction,
+    coordinates.x,
+    coordinates.z,
+    interactionHintPoints,
+    isEntering,
+    isSeated,
+    lampSpotEnabled,
+  ]);
 
   useEffect(() => {
-    const updateTime = () => {
-      setCurrentTime(
-        new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        }),
-      );
-    };
-
-    updateTime();
-    const intervalId = window.setInterval(updateTime, 1000);
+    const timeoutId = window.setTimeout(() => {
+      setQuickStartVisible(false);
+    }, ENTRY_QUICK_START_AUTO_HIDE_MS);
 
     return () => {
-      window.clearInterval(intervalId);
+      window.clearTimeout(timeoutId);
     };
   }, []);
 
@@ -518,6 +633,12 @@ export default function Entry3D() {
         event.target instanceof HTMLTextAreaElement ||
         (event.target as HTMLElement).isContentEditable
       ) {
+        return;
+      }
+
+      if (event.code === "KeyH") {
+        event.preventDefault();
+        setInstructionPanelVisible((isVisible) => !isVisible);
         return;
       }
 
@@ -596,9 +717,8 @@ export default function Entry3D() {
           isSummer={isSummer}
           monitorUrl={monitorUrl}
           lampSpotEnabled={lampSpotEnabled}
-          onLampClick={() => {
-            setLampSpotEnabled((enabled) => !enabled);
-          }}
+          onInteractionHintPointsChange={handleInteractionHintPointsChange}
+          onLampClick={handleLampClick}
           onMonitorClick={(point, normal) => {
             handleMonitorInteract(point, normal);
           }}
@@ -643,101 +763,12 @@ export default function Entry3D() {
         )}
       </Canvas>
 
-      <LiquidGlassCard
-        draggable={false}
-        blurIntensity="lg"
-        glowIntensity="xs"
-        shadowIntensity="sm"
-        borderRadius={ENTRY_PANEL_RADIUS}
-        style={{
-          position: "absolute",
-          top: 16,
-          left: 16,
-          zIndex: 10,
-          width: 280,
-          pointerEvents: "none",
-          userSelect: "none",
-        }}
-      >
-        <div
-          style={{
-            borderRadius: 10,
-            border: "1px solid rgba(191, 219, 254, 0.8)",
-            background: "rgba(191, 219, 254, 0.16)",
-            color: "#eff6ff",
-            padding: "10px 12px",
-            fontSize: 12,
-            lineHeight: 1.35,
-            fontFamily: ENTRY_PANEL_FONT,
-            letterSpacing: "0.01em",
-          }}
-        >
-          <div
-            style={{
-              fontFamily: ENTRY_GUIDE_HEADING_FONT,
-              fontWeight: 800,
-              marginBottom: 4,
-              color: "#dbeafe",
-              letterSpacing: "0.03em",
-            }}
-          >
-            Entry Guide
-          </div>
-          {entryGuideSteps.map((step, index) => (
-            <div key={step}>
-              {index + 1}) {step}
-            </div>
-          ))}
-        </div>
-      </LiquidGlassCard>
-
-      <LiquidGlassCard
-        draggable={false}
-        blurIntensity="lg"
-        glowIntensity="xs"
-        shadowIntensity="sm"
-        borderRadius={ENTRY_PANEL_RADIUS}
-        style={{
-          position: "absolute",
-          top: 16,
-          right: 16,
-          zIndex: 10,
-          minWidth: 190,
-          pointerEvents: "none",
-          userSelect: "none",
-        }}
-      >
-        <div
-          style={{
-            borderRadius: 10,
-            border: "1px solid rgba(191, 219, 254, 0.82)",
-            background: "rgba(147, 197, 253, 0.18)",
-            color: "#eff6ff",
-            padding: "10px 12px",
-            fontSize: 12,
-            lineHeight: 1.45,
-            fontFamily: ENTRY_PANEL_FONT,
-            letterSpacing: "0.02em",
-          }}
-        >
-          <div style={{ fontWeight: 700, marginBottom: 4, color: "#dbeafe" }}>Live Coordinates</div>
-          <div style={{ marginBottom: 6, color: "#bae6fd" }}>Time: {currentTime}</div>
-          <div>X: {coordinates.x.toFixed(2)}</div>
-          <div>Y: {coordinates.y.toFixed(2)}</div>
-          <div>Z: {coordinates.z.toFixed(2)}</div>
-          <div style={{ marginTop: 6, color: "#cbd5e1" }}>
-            X[{ENTRY_ROOM_BOUNDARIES.x.min}, {ENTRY_ROOM_BOUNDARIES.x.max}] Z[
-            {ENTRY_ROOM_BOUNDARIES.z.min}, {ENTRY_ROOM_BOUNDARIES.z.max}]
-          </div>
-          <div style={{ marginTop: 6, color: "#bfdbfe" }}>
-            Spawn [{ENTRY_SPAWN_POINT.x}, {ENTRY_SPAWN_POINT.y}, {ENTRY_SPAWN_POINT.z}]
-          </div>
-          <div style={{ marginTop: 6, color: isSeated ? "#fef08a" : "#cbd5e1" }}>
-            Seat [{ENTRY_SEAT_SETTINGS.position.x}, {ENTRY_SEAT_SETTINGS.position.y},{" "}
-            {ENTRY_SEAT_SETTINGS.position.z}] | {isSeated ? "SEATED" : "standing"}
-          </div>
-        </div>
-      </LiquidGlassCard>
+      <EntryInstructionHUD
+        controlsVisible={instructionPanelVisible}
+        quickStartVisible={quickStartVisible}
+        activeHint={entryContextHint}
+        statusToast={playerStatus}
+      />
 
       <div
         style={{
@@ -755,90 +786,6 @@ export default function Entry3D() {
           userSelect: "none",
         }}
       />
-
-      <LiquidGlassCard
-        draggable={false}
-        blurIntensity="md"
-        glowIntensity="xs"
-        shadowIntensity="sm"
-        borderRadius={ENTRY_PANEL_RADIUS}
-        style={{
-          position: "absolute",
-          left: "50%",
-          bottom: 10,
-          transform: "translateX(-50%)",
-          zIndex: 10,
-          pointerEvents: "none",
-          userSelect: "none",
-        }}
-      >
-        <div
-          style={{
-            border: "1px solid rgba(191, 219, 254, 0.82)",
-            borderRadius: 999,
-            background: "rgba(147, 197, 253, 0.18)",
-            color: "#eff6ff",
-            padding: "4px 8px",
-            fontSize: 12,
-            fontFamily: ENTRY_PANEL_FONT,
-            letterSpacing: "0.02em",
-          }}
-        >
-          WASD to move | Click to lock | Click monitor to enter | Click lamp to toggle
-        </div>
-      </LiquidGlassCard>
-
-      {activeInteraction && !isEntering && !isSeated && (
-        <div
-          style={{
-            position: "absolute",
-            left: "50%",
-            bottom: 52,
-            transform: "translateX(-50%)",
-            zIndex: 10,
-            background: "rgba(3, 7, 18, 0.82)",
-            border: "1px solid rgba(96, 165, 250, 0.9)",
-            borderRadius: 12,
-            color: "#dbeafe",
-            padding: "10px 14px",
-            minWidth: 220,
-            textAlign: "center",
-            boxShadow: "0 10px 25px rgba(2, 6, 23, 0.45)",
-            pointerEvents: "none",
-            userSelect: "none",
-          }}
-        >
-          <div style={{ fontSize: 12, color: "#93c5fd", marginBottom: 4 }}>
-            {activeInteraction.label} nearby
-          </div>
-          <div style={{ fontSize: 14, fontWeight: 700 }}>{activeInteraction.prompt}</div>
-        </div>
-      )}
-
-      {isSeated && !isEntering && (
-        <div
-          style={{
-            position: "absolute",
-            left: "50%",
-            bottom: 52,
-            transform: "translateX(-50%)",
-            zIndex: 10,
-            background: "rgba(15, 23, 42, 0.9)",
-            border: "1px solid rgba(250, 204, 21, 0.9)",
-            borderRadius: 12,
-            color: "#f8fafc",
-            padding: "10px 14px",
-            minWidth: 260,
-            textAlign: "center",
-            boxShadow: "0 10px 25px rgba(2, 6, 23, 0.45)",
-            pointerEvents: "none",
-            userSelect: "none",
-          }}
-        >
-          <div style={{ fontSize: 12, color: "#fde68a", marginBottom: 4 }}>Seated</div>
-          <div style={{ fontSize: 14, fontWeight: 700 }}>Press Space to stand up</div>
-        </div>
-      )}
 
       {shouldWarmHome && (
         <div

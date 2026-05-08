@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { fetchProjects, createProject, updateProject, deleteProject } from '../../services/apiClient';
+import { uploadToCloudinary } from '../../services/cloudinaryService';
 import { Button } from '../ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { useToast } from '../../hooks/use-toast';
-import { Trash2, Edit, Plus, X } from 'lucide-react';
+import { Trash2, Edit, Plus, X, Upload, ImageIcon } from 'lucide-react';
 
-type MentorInput = { name: string; role: string; email: string; linkedin: string; github: string };
+type MentorInput = { name: string; role: string; email: string; linkedin: string; github: string; image_url: string };
 
-const emptyMentor = (): MentorInput => ({ name: '', role: 'Project Mentor', email: '', linkedin: '', github: '' });
+const emptyMentor = (): MentorInput => ({ name: '', role: 'Project Mentor', email: '', linkedin: '', github: '', image_url: '' });
 
 const defaultForm = () => ({
   project_title: '',
@@ -40,6 +41,7 @@ const ProjectsManager: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [expandedDesc, setExpandedDesc] = useState<Record<string, boolean>>({});
+  const [mentorImageUploading, setMentorImageUploading] = useState<Record<number, boolean>>({});
   const { toast } = useToast();
 
   // Filter State
@@ -85,6 +87,7 @@ const ProjectsManager: React.FC = () => {
             email: m?.email || '',
             linkedin: m?.linkedin || '',
             github: m?.github || '',
+            image_url: m?.image_url || '',
           }))
         : [emptyMentor()];
       const im = project.industry_mentor || {};
@@ -176,6 +179,19 @@ const ProjectsManager: React.FC = () => {
     const updated = [...formData.mentors];
     updated[index] = { ...updated[index], [field]: value };
     setFormData({ ...formData, mentors: updated });
+  };
+
+  const handleAdminMentorImageUpload = async (index: number, file: File) => {
+    setMentorImageUploading(prev => ({ ...prev, [index]: true }));
+    try {
+      const result = await uploadToCloudinary(file, 'mentor_images');
+      updateMentor(index, 'image_url', result.secure_url);
+      toast({ title: 'Image uploaded', description: 'Mentor image uploaded successfully.' });
+    } catch (err) {
+      toast({ title: 'Upload failed', description: 'Failed to upload image. Please try again.', variant: 'destructive' });
+    } finally {
+      setMentorImageUploading(prev => ({ ...prev, [index]: false }));
+    }
   };
 
   return (
@@ -385,6 +401,44 @@ const ProjectsManager: React.FC = () => {
                     <div className="space-y-2 col-span-1 sm:col-span-2">
                       <Label className="text-xs">GitHub URL</Label>
                       <Input className="bg-transparent border-terminal-dim h-8 text-sm" value={mentor.github} onChange={e => updateMentor(index, 'github', e.target.value)} />
+                    </div>
+                    <div className="space-y-2 col-span-1 sm:col-span-2">
+                      <Label className="text-xs">Mentor Image</Label>
+                      <div className="flex items-center gap-3">
+                        {mentor.image_url ? (
+                          <img src={mentor.image_url} alt={`${mentor.name || 'Mentor'} avatar`} className="w-10 h-10 rounded-full object-cover border border-terminal-dim" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full border border-dashed border-terminal-dim/50 flex items-center justify-center">
+                            <ImageIcon size={16} className="text-terminal-dim" />
+                          </div>
+                        )}
+                        <label className="flex items-center gap-2 px-3 py-1.5 rounded border border-terminal-dim/50 bg-terminal-dim/10 hover:bg-terminal-dim/20 cursor-pointer text-xs text-terminal-text transition-colors">
+                          {mentorImageUploading[index] ? (
+                            <span className="animate-pulse">Uploading...</span>
+                          ) : (
+                            <>
+                              <Upload size={14} />
+                              <span>{mentor.image_url ? 'Change' : 'Upload'}</span>
+                            </>
+                          )}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            disabled={mentorImageUploading[index]}
+                            onChange={e => {
+                              const file = e.target.files?.[0];
+                              if (file) handleAdminMentorImageUpload(index, file);
+                              e.target.value = '';
+                            }}
+                          />
+                        </label>
+                        {mentor.image_url && (
+                          <button type="button" onClick={() => updateMentor(index, 'image_url', '')} className="text-terminal-dim hover:text-red-400 text-xs">
+                            Remove
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}

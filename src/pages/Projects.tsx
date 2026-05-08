@@ -3,7 +3,7 @@ import { useTerminal } from '../context/TerminalContext';
 import ProjectCard from '../components/ProjectCard';
 import TerminalHeader from '../components/TerminalHeader';
 import RepoSocialPreview from '../components/RepoSocialPreview';
-import { Search, Filter, X, FileText, Github, ExternalLink, Mail, Linkedin, Plus } from 'lucide-react';
+import { Search, Filter, X, FileText, Github, ExternalLink, Mail, Linkedin, Plus, Upload, ImageIcon } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useGithubIssues } from '../hooks/useGithubIssues';
 import ProjectIssuesPanel from '../components/ProjectIssuesPanel';
@@ -13,8 +13,9 @@ import { Label } from '../components/ui/label';
 import { Button } from '../components/ui/button';
 import { useToast } from '../hooks/use-toast';
 import { submitProject } from '../services/apiClient';
+import { uploadToCloudinary } from '../services/cloudinaryService';
 
-type MentorInput = { name: string; role: string; email: string; linkedin: string; github: string };
+type MentorInput = { name: string; role: string; email: string; linkedin: string; github: string; image_url: string };
 
 const Projects = () => {
   const {
@@ -33,6 +34,7 @@ const Projects = () => {
 
   const { toast } = useToast();
   const [isSubmitModalOpen, setIsSubmitModalOpen] = React.useState(false);
+  const [mentorImageUploading, setMentorImageUploading] = React.useState<Record<number, boolean>>({});
   const [submitFormData, setSubmitFormData] = React.useState({
     project_title: '',
     project_description: '',
@@ -43,7 +45,7 @@ const Projects = () => {
     github_repo_link: '',
     docs: '',
     is_docs_accessible: false,
-    mentors: [{ name: '', role: 'Project Mentor', email: '', linkedin: '', github: '' }] as MentorInput[],
+    mentors: [{ name: '', role: 'Project Mentor', email: '', linkedin: '', github: '', image_url: '' }] as MentorInput[],
     tech_stack: '',
     industry_mentor_name: '',
     industry_mentor_email: '',
@@ -53,6 +55,21 @@ const Projects = () => {
     live_links: '',
     recommended: ''
   });
+
+  const handleMentorImageUpload = async (index: number, file: File) => {
+    setMentorImageUploading(prev => ({ ...prev, [index]: true }));
+    try {
+      const result = await uploadToCloudinary(file, 'mentor_images');
+      const newMentors = [...submitFormData.mentors];
+      newMentors[index] = { ...newMentors[index], image_url: result.secure_url };
+      setSubmitFormData({ ...submitFormData, mentors: newMentors });
+      toast({ title: 'Image uploaded', description: 'Mentor image uploaded successfully.' });
+    } catch (err) {
+      toast({ title: 'Upload failed', description: 'Failed to upload image. Please try again.', variant: 'destructive' });
+    } finally {
+      setMentorImageUploading(prev => ({ ...prev, [index]: false }));
+    }
+  };
 
   const handleProjectSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,9 +91,10 @@ const Projects = () => {
       setSubmitFormData({
         project_title: '', project_description: '', status: 'ongoing', type: 'woc',
         year: new Date().getFullYear(), preview_link: '', github_repo_link: '', docs: '', is_docs_accessible: false,
-        mentors: [{ name: '', role: 'Project Mentor', email: '', linkedin: '', github: '' }], tech_stack: '', industry_mentor_name: '', industry_mentor_email: '',
+        mentors: [{ name: '', role: 'Project Mentor', email: '', linkedin: '', github: '', image_url: '' }], tech_stack: '', industry_mentor_name: '', industry_mentor_email: '',
         industry_mentor_linkedin: '', category: '', current_desc: '', live_links: '', recommended: ''
       });
+      setMentorImageUploading({});
     } catch (err) {
       toast({ title: "Error", description: "Failed to submit project. Please try again.", variant: "destructive" });
     }
@@ -694,7 +712,7 @@ const Projects = () => {
               <div className="space-y-4 col-span-1 sm:col-span-2 pt-4 border-t border-terminal-dim/30">
                 <div className="flex justify-between items-center mb-2">
                   <h4 className="text-terminal-accent">Project Mentors</h4>
-                  <Button type="button" variant="outline" size="sm" className="bg-transparent border-terminal-dim hover:text-white" onClick={() => setSubmitFormData({ ...submitFormData, mentors: [...submitFormData.mentors, { name: '', role: 'Project Mentor', email: '', linkedin: '', github: '' }] })}>
+                  <Button type="button" variant="outline" size="sm" className="bg-transparent border-terminal-dim hover:text-white" onClick={() => setSubmitFormData({ ...submitFormData, mentors: [...submitFormData.mentors, { name: '', role: 'Project Mentor', email: '', linkedin: '', github: '', image_url: '' }] })}>
                     <Plus size={14} className="mr-1" /> Add Mentor
                   </Button>
                 </div>
@@ -744,6 +762,48 @@ const Projects = () => {
                         newMentors[index].github = e.target.value;
                         setSubmitFormData({ ...submitFormData, mentors: newMentors });
                       }} />
+                    </div>
+                    <div className="space-y-2 col-span-1 sm:col-span-2">
+                      <Label className="text-xs">Mentor Image</Label>
+                      <div className="flex items-center gap-3">
+                        {mentor.image_url ? (
+                          <img src={mentor.image_url} alt={`${mentor.name || 'Mentor'} avatar`} className="w-10 h-10 rounded-full object-cover border border-terminal-dim" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full border border-dashed border-terminal-dim/50 flex items-center justify-center">
+                            <ImageIcon size={16} className="text-terminal-dim" />
+                          </div>
+                        )}
+                        <label className="flex items-center gap-2 px-3 py-1.5 rounded border border-terminal-dim/50 bg-terminal-dim/10 hover:bg-terminal-dim/20 cursor-pointer text-xs text-terminal-text transition-colors">
+                          {mentorImageUploading[index] ? (
+                            <span className="animate-pulse">Uploading...</span>
+                          ) : (
+                            <>
+                              <Upload size={14} />
+                              <span>{mentor.image_url ? 'Change' : 'Upload'}</span>
+                            </>
+                          )}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            disabled={mentorImageUploading[index]}
+                            onChange={e => {
+                              const file = e.target.files?.[0];
+                              if (file) handleMentorImageUpload(index, file);
+                              e.target.value = '';
+                            }}
+                          />
+                        </label>
+                        {mentor.image_url && (
+                          <button type="button" onClick={() => {
+                            const newMentors = [...submitFormData.mentors];
+                            newMentors[index] = { ...newMentors[index], image_url: '' };
+                            setSubmitFormData({ ...submitFormData, mentors: newMentors });
+                          }} className="text-terminal-dim hover:text-red-400 text-xs">
+                            Remove
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}

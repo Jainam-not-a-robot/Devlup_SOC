@@ -81,7 +81,7 @@ const Home = () => {
             </div>
           </Link>
           
-          <Link 
+          {/* <Link 
             to="/apply" 
             className="bg-terminal-dim/20 hover:bg-terminal-dim/30 border border-terminal-dim rounded-lg p-4 sm:p-6 transition-all group"
           >
@@ -93,7 +93,7 @@ const Home = () => {
               <span>Apply now</span>
               <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
             </div>
-          </Link>
+          </Link> */}
         </div>
       </div>
       

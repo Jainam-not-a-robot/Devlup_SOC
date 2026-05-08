@@ -284,10 +284,8 @@ export const TerminalProvider: React.FC<TerminalProviderProps> = ({ children }) 
   search [query], s [query]  Search for projects
   filter [tech], f [tech]    Filter projects by technology
   view [id], v [id], [id]    View details of a specific project
-  timeline, tl             Navigate to Timeline page
   stats [options]          View site analytics data
   mentors, m               Show all project mentors
-  apply, a                 Open contributor application form
   shortcuts, keys          Display keyboard shortcuts
   about                     Show information about this terminal`
         });
@@ -456,23 +454,23 @@ export const TerminalProvider: React.FC<TerminalProviderProps> = ({ children }) 
         });
         break;
         
-      case 'timeline':
-      case 'tl':
-        window.location.href = '/timeline';
-        addToHistory({ 
-          type: 'response', 
-          content: 'Opening Timeline page...' 
-        });
-        break;
+      // case 'timeline':
+      // case 'tl':
+      //   window.location.href = '/timeline';
+      //   addToHistory({ 
+      //     type: 'response', 
+      //     content: 'Opening Timeline page...' 
+      //   });
+      //   break;
         
-      case 'apply':
-      case 'a':
-        window.location.href = '/apply';
-        addToHistory({ 
-          type: 'response', 
-          content: 'Opening contributor application form...' 
-        });
-        break;
+      // case 'apply':
+      // case 'a':
+      //   window.location.href = '/apply';
+      //   addToHistory({ 
+      //     type: 'response', 
+      //     content: 'Opening contributor application form...' 
+      //   });
+      //   break;
         
       case 'matrix':
         addToHistory({ 

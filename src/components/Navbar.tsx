@@ -59,12 +59,12 @@ const Navbar = () => {
     },
     { path: '/mentors', icon: GraduationCap, label: 'Mentors', shortcut:'Alt+M'},
     { path: '/projects', icon: Briefcase, label: 'Projects', shortcut: 'Alt+P' },
-    { path: '/apply', icon: User, label: 'Apply', shortcut: 'Alt+A' },
-    { path: '/timeline', icon: Calendar, label: 'Timeline', shortcut: 'Alt+T' },
+    // { path: '/apply', icon: User, label: 'Apply', shortcut: 'Alt+A' },
+    // { path: '/timeline', icon: Calendar, label: 'Timeline', shortcut: 'Alt+T' },
     { path: '/stats', icon: BarChart, label: 'Stats', shortcut: 'Alt+S' },
-    { path: '/projects/issues', icon: AlertCircle, label: 'Issues', shortcut: 'Alt+I' },
+    // { path: '/projects/issues', icon: AlertCircle, label: 'Issues', shortcut: 'Alt+I' },
     { path: '/contact', icon: Phone, label: 'Contact', shortcut: 'Alt+C' },
-    { path: '/leaderboard', icon: Trophy, label: 'Leaderboard', shortcut: 'Alt+L' },
+    // { path: '/leaderboard', icon: Trophy, label: 'Leaderboard', shortcut: 'Alt+L' },
   ];
 
   return (

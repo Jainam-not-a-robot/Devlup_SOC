@@ -12,6 +12,7 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell, Legend
 } from 'recharts';
 import { motion } from 'framer-motion';
+import { useTheme } from './ThemeProvider';
 
 // More professional, consistent color palette
 const COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#f43f5e'];
@@ -74,6 +75,11 @@ const AnalyticsDashboard: React.FC = () => {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'all'>('week');
+  const { theme } = useTheme();
+
+  // Theme-aware chart colors
+  const axisColor = theme.terminalDim;
+  const gridColor = theme.terminalWindowBorder;
 
   useEffect(() => {
     const loadAnalytics = async () => {
@@ -362,20 +368,20 @@ const AnalyticsDashboard: React.FC = () => {
                       <stop offset="95%" stopColor={COLORS[0]} stopOpacity={0.1}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#333342" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
                   <XAxis 
                     dataKey="date" 
-                    stroke="#e2e8f0" 
-                    tick={{ fill: '#e2e8f0', fontSize: 12, fontWeight: 500 }}
-                    tickLine={{ stroke: '#e2e8f0' }}
+                    stroke={axisColor} 
+                    tick={{ fill: axisColor, fontSize: 12, fontWeight: 500 }}
+                    tickLine={{ stroke: axisColor }}
                     height={40}
                   />
                   <YAxis 
-                    stroke="#e2e8f0" 
-                    tick={{ fill: '#e2e8f0', fontSize: 12, fontWeight: 500 }}
-                    tickLine={{ stroke: '#e2e8f0' }}
+                    stroke={axisColor} 
+                    tick={{ fill: axisColor, fontSize: 12, fontWeight: 500 }}
+                    tickLine={{ stroke: axisColor }}
                     width={40}
-                    axisLine={{ stroke: '#e2e8f0' }}
+                    axisLine={{ stroke: axisColor }}
                   />
                   <Tooltip content={<CustomTooltip />} />
                   <Area 
@@ -424,21 +430,21 @@ const AnalyticsDashboard: React.FC = () => {
                       bottom: 5,
                     }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#333342" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
                     <XAxis 
                       type="number" 
-                      stroke="#e2e8f0" 
-                      tick={{ fill: '#e2e8f0', fontSize: 12, fontWeight: 500 }}
-                      tickLine={{ stroke: '#e2e8f0' }}
-                      axisLine={{ stroke: '#e2e8f0' }}
+                      stroke={axisColor} 
+                      tick={{ fill: axisColor, fontSize: 12, fontWeight: 500 }}
+                      tickLine={{ stroke: axisColor }}
+                      axisLine={{ stroke: axisColor }}
                     />
                     <YAxis 
                       dataKey="name" 
                       type="category" 
-                      stroke="#e2e8f0" 
-                      tick={{ fill: '#e2e8f0', fontSize: 12, fontWeight: 500 }}
-                      tickLine={{ stroke: '#e2e8f0' }}
-                      axisLine={{ stroke: '#e2e8f0' }}
+                      stroke={axisColor} 
+                      tick={{ fill: axisColor, fontSize: 12, fontWeight: 500 }}
+                      tickLine={{ stroke: axisColor }}
+                      axisLine={{ stroke: axisColor }}
                       width={100} 
                     />
                     <Tooltip content={<CustomTooltip />} />
@@ -528,7 +534,7 @@ const AnalyticsDashboard: React.FC = () => {
       >
         <p className="mb-2 text-terminal-dim">
           Get these stats via terminal:
-          <code className="bg-terminal-dim text-terminal-text ml-2 px-2 py-1 rounded">stats --view analytics</code>
+          <code className="bg-terminal text-terminal-accent ml-2 px-2 py-1 rounded border border-terminal-dim/30">stats --view analytics</code>
         </p>
         <p className="text-xs text-terminal-dim">
           Last updated: {new Date().toLocaleTimeString()}

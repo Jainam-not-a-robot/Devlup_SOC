@@ -30,14 +30,14 @@ export function useKeyboardShortcuts() {
     const shortcuts: ShortcutRoute[] = [
       { key: 'h', route: '/home', description: 'Home', altKey: true, focusTerminal: false },
       { key: 'p', route: '/projects', description: 'Projects', altKey: true },
-      { key: 'a', route: '/apply', description: 'Apply', altKey: true },
-      { key: 't', route: '/timeline', description: 'Timeline', altKey: true },
+      // { key: 'a', route: '/apply', description: 'Apply', altKey: true },
+      // { key: 't', route: '/timeline', description: 'Timeline', altKey: true },
       { key: 's', route: '/stats', description: 'Stats', altKey: true },
       { key: 'c', route: '/contact', description: 'Contact', altKey: true },
       { key: 'm', route: '/mentors', description: 'Mentors', altKey: true },
       { key: 't', route: '/terminal', description: 'Terminal View', altKey: true, shiftKey: true, focusTerminal: true },
       { key: '/', route: '/', description: 'Help', altKey: true, shiftKey: true },
-      { key: 'l', route: '/leaderboard', description: 'Leaderboard', altKey: true },
+      // { key: 'l', route: '/leaderboard', description: 'Leaderboard', altKey: true },
       // Admin Panel Access
       { 
         key: 'A', 
@@ -155,12 +155,12 @@ export function useKeyboardShortcuts() {
           <p className="font-semibold">Navigation:</p>
           <p><kbd className="px-1 bg-terminal-dim rounded">Alt+H</kbd> - Home</p>
           <p><kbd className="px-1 bg-terminal-dim rounded">Alt+P</kbd> - Projects</p>
-          <p><kbd className="px-1 bg-terminal-dim rounded">Alt+A</kbd> - Apply</p>
-          <p><kbd className="px-1 bg-terminal-dim rounded">Alt+T</kbd> - Timeline</p>
+          {/* <p><kbd className="px-1 bg-terminal-dim rounded">Alt+A</kbd> - Apply</p> */}
+          {/* <p><kbd className="px-1 bg-terminal-dim rounded">Alt+T</kbd> - Timeline</p> */}
           <p><kbd className="px-1 bg-terminal-dim rounded">Alt+S</kbd> - Stats</p>
           <p><kbd className="px-1 bg-terminal-dim rounded">Alt+C</kbd> - Contact</p>
           <p><kbd className="px-1 bg-terminal-dim rounded">Alt+M</kbd> - Mentors</p>
-          <p><kbd className="px-1 bg-terminal-dim rounded">Alt+L</kbd> - Leaderboard</p>
+          {/* <p><kbd className="px-1 bg-terminal-dim rounded">Alt+L</kbd> - Leaderboard</p> */}
           <p><kbd className="px-1 bg-terminal-dim rounded">Alt+Shift+T</kbd> - Terminal View</p>
           <p><kbd className="px-1 bg-terminal-dim rounded">Alt+Shift+S</kbd> - 3D Entry</p>
         </div>

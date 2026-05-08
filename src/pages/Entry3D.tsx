@@ -1,4 +1,4 @@
-﻿import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Environment } from "@react-three/drei";
 import { useNavigate } from "react-router-dom";
@@ -16,9 +16,12 @@ import {
 import Home from "./Home";
 import Room from "../components/Room";
 import Player from "../components/Player";
+import MobilePlayer, { feedMobileJoystick } from "../components/MobilePlayer";
 import Snow from "../components/Snow";
 import PortalEnter from "../components/PortalEnter";
 import SmoothPointerLockControls from "../components/SmoothPointerLockControls";
+import TouchLookControls, { getTouchLookHandle } from "../components/TouchLookControls";
+import MobileControls from "../components/MobileControls";
 import EntryInstructionHUD, {
   getNearestEntryHint,
   type EntryHintZone,
@@ -34,6 +37,7 @@ import {
 } from "../constants/navigation";
 import { useDayNightCycle } from "../hooks/useDayNightCycle";
 import { isSummer, isWinter } from "../config/sceneTheme";
+import { useIsMobile } from "../hooks/useIsMobile";
 
 const ENTRY_BOUNDARY_PADDING = {
   tableFrontZ: 0.18,
@@ -456,11 +460,13 @@ export default function Entry3D() {
     setLampSpotEnabled(nextLampState);
   }, []);
 
+  const isMobile = useIsMobile();
+
   const handleMonitorInteract = useCallback((point?: Vector3, normal?: Vector3) => {
     if (isEntering) return;
     setSeatPosition(null);
     
-    if (document.pointerLockElement) {
+    if (!isMobile && document.pointerLockElement) {
       document.exitPointerLock();
     }
     
@@ -472,7 +478,7 @@ export default function Entry3D() {
 
     setPortalTarget(targetPoint);
     setIsEntering(true);
-  }, [isEntering]);
+  }, [isEntering, isMobile]);
 
   const handleSeatInteract = useCallback(() => {
     if (isEntering) return;
@@ -485,20 +491,22 @@ export default function Entry3D() {
       ),
     );
 
-    // INSTANT LOCK: Automatically trigger viewing mode when you sit down
-    const canvas = document.querySelector('canvas');
-    if (canvas && document.pointerLockElement === null) {
-      canvas.requestPointerLock();
+    // INSTANT LOCK: Automatically trigger viewing mode when you sit down (desktop only)
+    if (!isMobile) {
+      const canvas = document.querySelector('canvas');
+      if (canvas && document.pointerLockElement === null) {
+        canvas.requestPointerLock();
+      }
     }
 
-  }, [isEntering]);
+  }, [isEntering, isMobile]);
 
   const handleStandUp = useCallback(() => {
     setSeatPosition(null);
-    if (document.pointerLockElement) {
+    if (!isMobile && document.pointerLockElement) {
       document.exitPointerLock();
     }
-  }, []);
+  }, [isMobile]);
   
   const interactionTargets = useMemo<InteractionTarget[]>(
     () => [
@@ -626,6 +634,36 @@ export default function Entry3D() {
     };
   }, []);
 
+  /* ── Mobile control callbacks ── */
+  const handleMobileJoystick = useCallback(
+    (input: { x: number; y: number }) => {
+      feedMobileJoystick(input);
+    },
+    [],
+  );
+
+  const handleMobileLook = useCallback(
+    (deltaX: number, deltaY: number) => {
+      getTouchLookHandle()?.feedLookDelta(deltaX, deltaY);
+    },
+    [],
+  );
+
+  const handleMobileTap = useCallback(
+    (screenX: number, screenY: number) => {
+      window.dispatchEvent(
+        new CustomEvent("mobile-tap", { detail: { screenX, screenY } }),
+      );
+    },
+    [],
+  );
+
+  const handleMobileDoubleTap = useCallback(() => {
+    if (seatPosition) {
+      handleStandUp();
+    }
+  }, [seatPosition, handleStandUp]);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (
@@ -649,6 +687,8 @@ export default function Entry3D() {
     };
 
     const handleMouseDown = (event: MouseEvent) => {
+      if (isMobile) return; // skip pointer lock on mobile
+
       const target = event.target as HTMLElement | null;
       if (target?.closest("[data-ui-control='true']")) {
         return;
@@ -669,7 +709,7 @@ export default function Entry3D() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("mousedown", handleMouseDown); 
     };
-  }, [seatPosition, isEntering, handleStandUp]);
+  }, [seatPosition, isEntering, handleStandUp, isMobile]);
 
   return (
     <div
@@ -744,21 +784,33 @@ export default function Entry3D() {
 
         {seatPosition && <SeatedCameraLock position={seatPosition} />}
 
-        {/* WASD movement */}
-        {!isEntering && !isSeated && (
+        {/* WASD movement (desktop) / virtual joystick movement (mobile) */}
+        {!isEntering && !isSeated && !isMobile && (
           <Player
             constrainPosition={applyEntryRoomBoundaries}
             standingHeight={ENTRY_ROOM_BOUNDARIES.standingHeight}
           />
         )}
+        {!isEntering && !isSeated && isMobile && (
+          <MobilePlayer
+            constrainPosition={applyEntryRoomBoundaries}
+            standingHeight={ENTRY_ROOM_BOUNDARIES.standingHeight}
+          />
+        )}
 
-        {/* mouse look */}
-        {!isEntering && (
+        {/* mouse look (desktop) / touch look (mobile) */}
+        {!isEntering && !isMobile && (
           <SmoothPointerLockControls
             pointerSpeed={0.06}
             smoothing={12}
             maxMovementPerEvent={36}
             lockSettlingMs={120}
+          />
+        )}
+        {!isEntering && isMobile && (
+          <TouchLookControls
+            sensitivity={0.3}
+            smoothing={14}
           />
         )}
       </Canvas>
@@ -768,24 +820,39 @@ export default function Entry3D() {
         quickStartVisible={quickStartVisible}
         activeHint={entryContextHint}
         statusToast={playerStatus}
+        isMobile={isMobile}
       />
 
-      <div
-        style={{
-          position: "absolute",
-          left: "50%",
-          top: "50%",
-          transform: "translate(-50%, -50%)",
-          width: 10,
-          height: 10,
-          borderRadius: "50%",
-          border: "2px solid #34d399",
-          background: "rgba(52,211,153,0.2)",
-          zIndex: 10,
-          pointerEvents: "none",
-          userSelect: "none",
-        }}
-      />
+      {/* Crosshair — desktop only */}
+      {!isMobile && (
+        <div
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 10,
+            height: 10,
+            borderRadius: "50%",
+            border: "2px solid #34d399",
+            background: "rgba(52,211,153,0.2)",
+            zIndex: 10,
+            pointerEvents: "none",
+            userSelect: "none",
+          }}
+        />
+      )}
+
+      {/* Mobile touch controls overlay */}
+      {isMobile && (
+        <MobileControls
+          visible={!isEntering}
+          onJoystickChange={handleMobileJoystick}
+          onLookChange={handleMobileLook}
+          onTap={handleMobileTap}
+          onDoubleTap={handleMobileDoubleTap}
+        />
+      )}
 
       {shouldWarmHome && (
         <div

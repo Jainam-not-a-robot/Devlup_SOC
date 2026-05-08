@@ -66,9 +66,18 @@ export default function ProximityInteraction({
       activeTargetRef.current.onInteract();
     };
 
+    // On mobile, a tap near a chair (while proximity is active) should trigger sit
+    const handleMobileTap = () => {
+      if (!enabled) return;
+      if (!activeTargetRef.current) return;
+      activeTargetRef.current.onInteract();
+    };
+
     window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("mobile-tap", handleMobileTap);
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("mobile-tap", handleMobileTap);
     };
   }, [enabled]);
 

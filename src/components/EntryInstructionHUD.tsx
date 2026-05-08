@@ -39,6 +39,7 @@ type EntryInstructionHUDProps = {
   quickStartVisible: boolean;
   activeHint: EntryInstructionHint | null;
   statusToast: EntryInstructionHint | null;
+  isMobile?: boolean;
 };
 
 type PlayerXZ = {
@@ -87,6 +88,39 @@ const instructionSections = [
       { keys: ["CLICK"], label: "Activate center dot" },
       { keys: ["ESC"], label: "Unlock cursor" },
       { keys: ["H"], label: "Toggle guide" },
+    ],
+  },
+] as const;
+
+const mobileInstructionSections = [
+  {
+    id: "movement",
+    title: "Movement",
+    icon: Keyboard,
+    tone: "movement" as const,
+    items: [
+      { keys: ["LEFT"], label: "Drag left side to move" },
+      { keys: ["RIGHT"], label: "Drag right side to look" },
+    ],
+  },
+  {
+    id: "interaction",
+    title: "Interaction",
+    icon: MousePointerClick,
+    tone: "interaction" as const,
+    items: [
+      { keys: ["TAP"], label: "Tap objects to interact" },
+      { keys: ["TAP"], label: "Tap lamp / monitor" },
+    ],
+  },
+  {
+    id: "actions",
+    title: "Actions",
+    icon: Zap,
+    tone: "action" as const,
+    items: [
+      { keys: ["TAP"], label: "Tap chair to sit" },
+      { keys: ["2×TAP"], label: "Double-tap to stand" },
     ],
   },
 ] as const;
@@ -142,8 +176,10 @@ export default function EntryInstructionHUD({
   quickStartVisible,
   activeHint,
   statusToast,
+  isMobile = false,
 }: EntryInstructionHUDProps) {
   const [displayHint, setDisplayHint] = useState<EntryInstructionHint | null>(activeHint);
+  const activeSections = isMobile ? mobileInstructionSections : instructionSections;
 
   useEffect(() => {
     if (activeHint) {
@@ -167,18 +203,37 @@ export default function EntryInstructionHUD({
           <h2>Enter Room</h2>
         </div>
         <ol className="entry-quick-start">
-          <li>
-            <span>1</span>
-            Click to enter
-          </li>
-          <li>
-            <span>2</span>
-            Move with WASD
-          </li>
-          <li>
-            <span>3</span>
-            Interact with objects
-          </li>
+          {isMobile ? (
+            <>
+              <li>
+                <span>1</span>
+                Drag left side to walk
+              </li>
+              <li>
+                <span>2</span>
+                Drag right side to look
+              </li>
+              <li>
+                <span>3</span>
+                Tap objects to interact
+              </li>
+            </>
+          ) : (
+            <>
+              <li>
+                <span>1</span>
+                Click to enter
+              </li>
+              <li>
+                <span>2</span>
+                Move with WASD
+              </li>
+              <li>
+                <span>3</span>
+                Interact with objects
+              </li>
+            </>
+          )}
         </ol>
       </LiquidGlassCard>
 
@@ -203,7 +258,7 @@ export default function EntryInstructionHUD({
         </header>
 
         <div className="entry-hud-sections">
-          {instructionSections.map((section) => {
+          {activeSections.map((section) => {
             const SectionIcon = section.icon;
 
             return (
@@ -233,18 +288,21 @@ export default function EntryInstructionHUD({
         </div>
       </LiquidGlassCard>
 
-      <LiquidGlassCard
-        draggable={false}
-        blurIntensity="md"
-        glowIntensity="xs"
-        shadowIntensity="sm"
-        borderRadius="999px"
-        className={`entry-hud-mini ${controlsVisible ? "" : "is-visible"}`}
-        aria-hidden={controlsVisible}
-      >
-        <KeyCap value="H" />
-        <span>Help</span>
-      </LiquidGlassCard>
+      {/* H‑key pill — desktop only */}
+      {!isMobile && (
+        <LiquidGlassCard
+          draggable={false}
+          blurIntensity="md"
+          glowIntensity="xs"
+          shadowIntensity="sm"
+          borderRadius="999px"
+          className={`entry-hud-mini ${controlsVisible ? "" : "is-visible"}`}
+          aria-hidden={controlsVisible}
+        >
+          <KeyCap value="H" />
+          <span>Help</span>
+        </LiquidGlassCard>
+      )}
 
       {statusToast && (
         <LiquidGlassCard

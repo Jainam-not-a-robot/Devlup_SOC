@@ -15,7 +15,7 @@ const AdminPanel: React.FC = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/');
+    navigate('/home', { replace: true });
   };
 
   return (

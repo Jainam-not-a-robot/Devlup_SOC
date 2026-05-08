@@ -167,7 +167,7 @@ export const fetchProjects = async (): Promise<Project[]> => {
     const useBackend = import.meta.env.VITE_USE_BACKEND === 'true';
 
     if (useBackend) {
-      const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const backendUrl = import.meta.env.VITE_API_URL;
       const response = await axios.get(`${backendUrl}/projects?approval_status=accepted`);
       
       return response.data.map((item: any) => ({

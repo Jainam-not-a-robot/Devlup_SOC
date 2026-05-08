@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create an Axios instance pointing to the FastAPI backend
 const apiClient = axios.create({
-  baseURL: 'http://localhost:8000', // Update this if your backend runs on a different URL/port
+  baseURL: import.meta.env.VITE_API_URL,
   headers: {
     'Content-Type': 'application/json',
   },

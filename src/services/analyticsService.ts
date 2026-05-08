@@ -43,7 +43,7 @@ export const recordPageVisit = async (page: string): Promise<boolean> => {
     
     const useBackend = import.meta.env.VITE_USE_BACKEND === 'true';
     if (useBackend) {
-        const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+        const backendUrl = import.meta.env.VITE_API_URL;
         await axios.post(`${backendUrl}/stats/visit`, {
             page,
             timestamp,
@@ -110,7 +110,7 @@ export const fetchAnalyticsData = async (): Promise<AnalyticsData | null> => {
     let rawVisits: any[] = [];
 
     if (useBackend) {
-      const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const backendUrl = import.meta.env.VITE_API_URL;
       const response = await axios.get(`${backendUrl}/stats/visits`);
       rawVisits = response.data;
     } else {

@@ -306,7 +306,9 @@
   pointer-events: none !important;
   user-select: none !important;
   -webkit-user-select: none !important;
-  /* ===== Modern Dark Scrollbar for Modal ===== */
+}
+
+/* ===== Modern Dark Scrollbar for Modal ===== */
 
 .modal-scroll {
   scrollbar-width: thin;
@@ -366,6 +368,7 @@
 .modal-content {
   animation: modalContentIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
 /* Fix Chrome Autofill White Background */
 input:-webkit-autofill,
 textarea:-webkit-autofill,
@@ -378,8 +381,6 @@ select:-webkit-autofill {
 /* Force dark background */
 input:-webkit-autofill {
   background-color: transparent !important;
-}
-
 }
 .single-leaf {
   position: absolute;

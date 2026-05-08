@@ -7,6 +7,7 @@ import ProjectsManager from '../components/admin/ProjectsManager';
 import ApplicationsManager from '../components/admin/ApplicationsManager';
 import MentorsManager from '../components/admin/MentorsManager';
 import TimelineManager from '../components/admin/TimelineManager';
+import FormFieldsManager from '../components/admin/FormFieldsManager';
 
 const AdminPanel: React.FC = () => {
   const { logout } = useAuth();
@@ -33,11 +34,12 @@ const AdminPanel: React.FC = () => {
       </div>
 
       <Tabs defaultValue="projects" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 bg-terminal-dim/20 mb-8 border border-terminal-dim h-12">
+        <TabsList className="grid w-full grid-cols-5 bg-terminal-dim/20 mb-8 border border-terminal-dim h-12">
           <TabsTrigger value="projects" className="data-[state=active]:bg-terminal-accent data-[state=active]:text-black text-terminal-text h-full font-bold">Projects</TabsTrigger>
           <TabsTrigger value="mentors" className="data-[state=active]:bg-terminal-accent data-[state=active]:text-black text-terminal-text h-full font-bold">Mentors</TabsTrigger>
           <TabsTrigger value="applications" className="data-[state=active]:bg-terminal-accent data-[state=active]:text-black text-terminal-text h-full font-bold">Applications</TabsTrigger>
           <TabsTrigger value="timeline" className="data-[state=active]:bg-terminal-accent data-[state=active]:text-black text-terminal-text h-full font-bold">Timeline</TabsTrigger>
+          <TabsTrigger value="form-fields" className="data-[state=active]:bg-terminal-accent data-[state=active]:text-black text-terminal-text h-full font-bold">Form Fields</TabsTrigger>
         </TabsList>
         <TabsContent value="projects">
           <ProjectsManager />
@@ -50,6 +52,9 @@ const AdminPanel: React.FC = () => {
         </TabsContent>
         <TabsContent value="timeline">
           <TimelineManager />
+        </TabsContent>
+        <TabsContent value="form-fields">
+          <FormFieldsManager />
         </TabsContent>
       </Tabs>
     </div>

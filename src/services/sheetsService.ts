@@ -168,7 +168,7 @@ export const fetchProjects = async (): Promise<Project[]> => {
 
     if (useBackend) {
       const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-      const response = await axios.get(`${backendUrl}/projects`);
+      const response = await axios.get(`${backendUrl}/projects?approval_status=accepted`);
       
       return response.data.map((item: any) => ({
         id: item._id || item.id,

@@ -27,6 +27,7 @@ export interface ApplicationPayload {
   mentee_proposal_url: string;
   project_name_1: string;
   project_name_2?: string;
+  [key: string]: any;
 }
 
 // Function to log in and get JWT token
@@ -62,8 +63,13 @@ export const submitApplication = async (data: ApplicationPayload) => {
 // ===========================
 // ADMIN: Projects CRUD
 // ===========================
-export const fetchProjects = async (params?: { year?: number; status?: string; type?: string }) => {
+export const fetchProjects = async (params?: { year?: number; status?: string; type?: string; approval_status?: string }) => {
   const response = await apiClient.get('/projects', { params });
+  return response.data;
+};
+
+export const submitProject = async (data: any) => {
+  const response = await apiClient.post('/projects/submit', data);
   return response.data;
 };
 
@@ -143,6 +149,29 @@ export const updateTimeline = async (id: string, data: any) => {
 
 export const deleteTimeline = async (id: string) => {
   const response = await apiClient.delete(`/timeline/${id}`);
+  return response.data;
+};
+
+// ===========================
+// ADMIN: Form Fields CRUD
+// ===========================
+export const fetchFormFields = async () => {
+  const response = await apiClient.get('/form-fields');
+  return response.data;
+};
+
+export const createFormField = async (data: any) => {
+  const response = await apiClient.post('/form-fields', data);
+  return response.data;
+};
+
+export const updateFormField = async (id: string, data: any) => {
+  const response = await apiClient.put(`/form-fields/${id}`, data);
+  return response.data;
+};
+
+export const deleteFormField = async (id: string) => {
+  const response = await apiClient.delete(`/form-fields/${id}`);
   return response.data;
 };
 

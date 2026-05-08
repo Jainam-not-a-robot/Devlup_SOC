@@ -138,7 +138,7 @@ const Mentors = () => {
                 }}
               />
 
-              <h2 className="text-2xl font-semibold">
+              <h2 className="text-2xl font-semibold text-center max-w-[200px]">
                 {mentor.name}
               </h2>
 

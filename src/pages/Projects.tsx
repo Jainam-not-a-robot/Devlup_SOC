@@ -3,12 +3,18 @@ import { useTerminal } from '../context/TerminalContext';
 import ProjectCard from '../components/ProjectCard';
 import TerminalHeader from '../components/TerminalHeader';
 import RepoSocialPreview from '../components/RepoSocialPreview';
-import { Search, Filter, X, FileText, Github, ExternalLink, Mail, Linkedin } from 'lucide-react';
+import { Search, Filter, X, FileText, Github, ExternalLink, Mail, Linkedin, Plus } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useGithubIssues } from '../hooks/useGithubIssues';
 import ProjectIssuesPanel from '../components/ProjectIssuesPanel';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Button } from '../components/ui/button';
+import { useToast } from '../hooks/use-toast';
+import { submitProject } from '../services/apiClient';
 
-
+type MentorInput = { name: string; role: string; email: string; linkedin: string; github: string };
 
 const Projects = () => {
   const {
@@ -17,8 +23,64 @@ const Projects = () => {
     searchQuery,
     setSearchQuery,
     techFilter,
-    setTechFilter
+    setTechFilter,
+    refreshProjects
   } = useTerminal();
+
+  React.useEffect(() => {
+    refreshProjects();
+  }, []);
+
+  const { toast } = useToast();
+  const [isSubmitModalOpen, setIsSubmitModalOpen] = React.useState(false);
+  const [submitFormData, setSubmitFormData] = React.useState({
+    project_title: '',
+    project_description: '',
+    status: 'ongoing',
+    type: 'woc',
+    year: new Date().getFullYear(),
+    preview_link: '',
+    github_repo_link: '',
+    docs: '',
+    is_docs_accessible: false,
+    mentors: [{ name: '', role: 'Project Mentor', email: '', linkedin: '', github: '' }] as MentorInput[],
+    tech_stack: '',
+    industry_mentor_name: '',
+    industry_mentor_email: '',
+    industry_mentor_linkedin: '',
+    category: '',
+    current_desc: '',
+    live_links: '',
+    recommended: ''
+  });
+
+  const handleProjectSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        ...submitFormData,
+        tech_stack: submitFormData.tech_stack ? submitFormData.tech_stack.split(',').map(s => s.trim()).filter(Boolean) : [],
+        mentors: submitFormData.mentors.filter(m => m.name.trim() !== ''),
+        live_links: submitFormData.live_links ? submitFormData.live_links.split(',').map(s => s.trim()).filter(Boolean) : [],
+        industry_mentor: submitFormData.industry_mentor_name ? {
+          name: submitFormData.industry_mentor_name,
+          email: submitFormData.industry_mentor_email || undefined,
+          linkedin: submitFormData.industry_mentor_linkedin || undefined
+        } : undefined
+      };
+      await submitProject(payload);
+      toast({ title: "Success", description: "Project submitted! It will be reviewed by admins." });
+      setIsSubmitModalOpen(false);
+      setSubmitFormData({
+        project_title: '', project_description: '', status: 'ongoing', type: 'woc',
+        year: new Date().getFullYear(), preview_link: '', github_repo_link: '', docs: '', is_docs_accessible: false,
+        mentors: [{ name: '', role: 'Project Mentor', email: '', linkedin: '', github: '' }], tech_stack: '', industry_mentor_name: '', industry_mentor_email: '',
+        industry_mentor_linkedin: '', category: '', current_desc: '', live_links: '', recommended: ''
+      });
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to submit project. Please try again.", variant: "destructive" });
+    }
+  };
 
   // Get all unique tech stacks
   const allTechStacks = React.useMemo(() => {
@@ -456,7 +518,12 @@ const Projects = () => {
         <TerminalHeader title="DevlUp Projects Archive" />
         <div className="terminal-body min-h-[500px] overflow-y-auto p-3 sm:p-6">
           <div className="mb-4 sm:mb-6">
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-terminal-text mb-2 sm:mb-3">{selectedTab === 'Ongoing' ? 'Live Projects' : selectedTab === 'Completed' ? 'Completed Projects' : 'Archived Projects'}</h1>
+            <div className="flex justify-between items-center mb-2 sm:mb-3">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-terminal-text">{selectedTab === 'Ongoing' ? 'Live Projects' : selectedTab === 'Completed' ? 'Completed Projects' : 'Archived Projects'}</h1>
+              <Button onClick={() => setIsSubmitModalOpen(true)} className="bg-terminal-accent text-black hover:bg-terminal-accent/80 flex items-center gap-2">
+                <Plus size={16} /> Submit Project
+              </Button>
+            </div>
             <div className="flex items-center gap-2 flex-wrap mb-2 sm:mb-3">
               {(
                 showArchived ? (['Ongoing', 'Completed', 'Archived'] as const) : (['Ongoing', 'Completed'] as const)
@@ -562,6 +629,171 @@ const Projects = () => {
           </div>
         </div>
       </div>
+      <Dialog open={isSubmitModalOpen} onOpenChange={setIsSubmitModalOpen}>
+        <DialogContent className="terminal-window border-terminal-accent text-terminal-text max-w-3xl bg-[#0D1117] max-h-[90vh] overflow-y-auto modal-scroll">
+          <DialogHeader>
+            <DialogTitle className="text-terminal-accent text-xl">Submit a Project</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleProjectSubmit} className="space-y-4 pt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2 col-span-1 sm:col-span-2">
+                <Label>Project Title *</Label>
+                <Input className="bg-transparent border-terminal-dim" required value={submitFormData.project_title} onChange={e => setSubmitFormData({ ...submitFormData, project_title: e.target.value })} />
+              </div>
+              <div className="space-y-2 col-span-1 sm:col-span-2">
+                <Label>Description *</Label>
+                <Input className="bg-transparent border-terminal-dim" required value={submitFormData.project_description} onChange={e => setSubmitFormData({ ...submitFormData, project_description: e.target.value })} />
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Type *</Label>
+                <select className="w-full bg-transparent border border-terminal-dim rounded-md h-10 px-3 text-terminal-text focus:outline-none focus:border-terminal-accent" required value={submitFormData.type} onChange={e => setSubmitFormData({ ...submitFormData, type: e.target.value })}>
+                  <option value="woc" className="bg-[#0D1117] text-white">WOC</option>
+                  <option value="soc" className="bg-[#0D1117] text-white">SOC</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label>Status *</Label>
+                <select className="w-full bg-transparent border border-terminal-dim rounded-md h-10 px-3 text-terminal-text focus:outline-none focus:border-terminal-accent" required value={submitFormData.status} onChange={e => setSubmitFormData({ ...submitFormData, status: e.target.value })}>
+                  <option value="ongoing" className="bg-[#0D1117] text-white">Ongoing</option>
+                  <option value="completed" className="bg-[#0D1117] text-white">Completed</option>
+                </select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Year *</Label>
+                <Input type="number" className="bg-transparent border-terminal-dim" required value={submitFormData.year} onChange={e => setSubmitFormData({ ...submitFormData, year: parseInt(e.target.value) })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Category</Label>
+                <Input className="bg-transparent border-terminal-dim" placeholder="e.g. Web Development" value={submitFormData.category} onChange={e => setSubmitFormData({ ...submitFormData, category: e.target.value })} />
+              </div>
+
+              <div className="space-y-2">
+                <Label>GitHub Repo Link</Label>
+                <Input className="bg-transparent border-terminal-dim" value={submitFormData.github_repo_link} onChange={e => setSubmitFormData({ ...submitFormData, github_repo_link: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Docs Link *</Label>
+                <Input className="bg-transparent border-terminal-dim" required value={submitFormData.docs} onChange={e => setSubmitFormData({ ...submitFormData, docs: e.target.value })} />
+                <div className="flex items-center gap-2 mt-2">
+                  <input type="checkbox" id="docs_accessible" className="accent-terminal-accent bg-transparent border-terminal-dim" checked={submitFormData.is_docs_accessible} onChange={e => setSubmitFormData({ ...submitFormData, is_docs_accessible: e.target.checked })} />
+                  <Label htmlFor="docs_accessible" className="text-sm text-terminal-dim cursor-pointer">Are the docs accessible to all?</Label>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Preview Link</Label>
+                <Input className="bg-transparent border-terminal-dim" value={submitFormData.preview_link} onChange={e => setSubmitFormData({ ...submitFormData, preview_link: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Live Links (comma separated)</Label>
+                <Input className="bg-transparent border-terminal-dim" placeholder="https://..., https://..." value={submitFormData.live_links} onChange={e => setSubmitFormData({ ...submitFormData, live_links: e.target.value })} />
+              </div>
+
+              <div className="space-y-4 col-span-1 sm:col-span-2 pt-4 border-t border-terminal-dim/30">
+                <div className="flex justify-between items-center mb-2">
+                  <h4 className="text-terminal-accent">Project Mentors</h4>
+                  <Button type="button" variant="outline" size="sm" className="bg-transparent border-terminal-dim hover:text-white" onClick={() => setSubmitFormData({ ...submitFormData, mentors: [...submitFormData.mentors, { name: '', role: 'Project Mentor', email: '', linkedin: '', github: '' }] })}>
+                    <Plus size={14} className="mr-1" /> Add Mentor
+                  </Button>
+                </div>
+                {submitFormData.mentors.map((mentor, index) => (
+                  <div key={index} className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 border border-terminal-dim/50 rounded bg-terminal-dim/5 relative group">
+                    {submitFormData.mentors.length > 1 && (
+                      <button type="button" onClick={() => setSubmitFormData({ ...submitFormData, mentors: submitFormData.mentors.filter((_, i) => i !== index) })} className="absolute top-2 right-2 text-terminal-dim hover:text-red-400">
+                        <X size={16} />
+                      </button>
+                    )}
+                    <div className="space-y-2">
+                      <Label className="text-xs">Name *</Label>
+                      <Input className="bg-transparent border-terminal-dim h-8 text-sm" required value={mentor.name} onChange={e => {
+                        const newMentors = [...submitFormData.mentors];
+                        newMentors[index].name = e.target.value;
+                        setSubmitFormData({ ...submitFormData, mentors: newMentors });
+                      }} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Role</Label>
+                      <Input className="bg-transparent border-terminal-dim h-8 text-sm" value={mentor.role} onChange={e => {
+                        const newMentors = [...submitFormData.mentors];
+                        newMentors[index].role = e.target.value;
+                        setSubmitFormData({ ...submitFormData, mentors: newMentors });
+                      }} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Email</Label>
+                      <Input className="bg-transparent border-terminal-dim h-8 text-sm" type="email" value={mentor.email} onChange={e => {
+                        const newMentors = [...submitFormData.mentors];
+                        newMentors[index].email = e.target.value;
+                        setSubmitFormData({ ...submitFormData, mentors: newMentors });
+                      }} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">LinkedIn URL</Label>
+                      <Input className="bg-transparent border-terminal-dim h-8 text-sm" value={mentor.linkedin} onChange={e => {
+                        const newMentors = [...submitFormData.mentors];
+                        newMentors[index].linkedin = e.target.value;
+                        setSubmitFormData({ ...submitFormData, mentors: newMentors });
+                      }} />
+                    </div>
+                    <div className="space-y-2 col-span-1 sm:col-span-2">
+                      <Label className="text-xs">GitHub URL</Label>
+                      <Input className="bg-transparent border-terminal-dim h-8 text-sm" value={mentor.github} onChange={e => {
+                        const newMentors = [...submitFormData.mentors];
+                        newMentors[index].github = e.target.value;
+                        setSubmitFormData({ ...submitFormData, mentors: newMentors });
+                      }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-2 col-span-1 sm:col-span-2">
+                <Label>Tech Stack (comma separated)</Label>
+                <Input className="bg-transparent border-terminal-dim" placeholder="React, Node.js, Python" value={submitFormData.tech_stack} onChange={e => setSubmitFormData({ ...submitFormData, tech_stack: e.target.value })} />
+              </div>
+              
+              <div className="space-y-2 col-span-1 sm:col-span-2 pt-4 border-t border-terminal-dim/30">
+                <h4 className="text-terminal-accent mb-2">Industry Mentor (Optional)</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <Label className="text-xs">Name</Label>
+                    <Input className="bg-transparent border-terminal-dim h-8 text-sm" value={submitFormData.industry_mentor_name} onChange={e => setSubmitFormData({ ...submitFormData, industry_mentor_name: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Email</Label>
+                    <Input className="bg-transparent border-terminal-dim h-8 text-sm" type="email" value={submitFormData.industry_mentor_email} onChange={e => setSubmitFormData({ ...submitFormData, industry_mentor_email: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">LinkedIn URL</Label>
+                    <Input className="bg-transparent border-terminal-dim h-8 text-sm" value={submitFormData.industry_mentor_linkedin} onChange={e => setSubmitFormData({ ...submitFormData, industry_mentor_linkedin: e.target.value })} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2 col-span-1 sm:col-span-2 pt-4 border-t border-terminal-dim/30">
+                <Label>Current Description / Update</Label>
+                <Input className="bg-transparent border-terminal-dim" value={submitFormData.current_desc} onChange={e => setSubmitFormData({ ...submitFormData, current_desc: e.target.value })} />
+              </div>
+              <div className="space-y-2 col-span-1 sm:col-span-2">
+                <Label>Recommended For</Label>
+                <select className="w-full bg-transparent border border-terminal-dim rounded-md h-10 px-3 text-terminal-text focus:outline-none focus:border-terminal-accent" value={submitFormData.recommended} onChange={e => setSubmitFormData({ ...submitFormData, recommended: e.target.value })}>
+                  <option value="" className="bg-[#0D1117] text-white">-- Select --</option>
+                  <option value="beginner" className="bg-[#0D1117] text-white">Beginner Friendly</option>
+                  <option value="all" className="bg-[#0D1117] text-white">Open to All</option>
+                  <option value="all - tough" className="bg-[#0D1117] text-white">Open to All (Tough)</option>
+                </select>
+              </div>
+            </div>
+            
+            <div className="flex justify-end pt-6 gap-2">
+              <Button type="button" variant="outline" className="bg-transparent border-terminal-dim hover:text-white hover:bg-terminal-dim/20" onClick={() => setIsSubmitModalOpen(false)}>Cancel</Button>
+              <Button type="submit" className="bg-terminal-accent text-black hover:bg-terminal-accent/80">Submit Project</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

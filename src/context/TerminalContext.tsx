@@ -89,6 +89,7 @@ interface TerminalContextType {
   setTechFilter: React.Dispatch<React.SetStateAction<string | null>>;
   addToTerminalHistory: (command: string) => void;
   checkKonamiCode: (key: string) => void;
+  refreshProjects: () => Promise<void>;
 }
 
 const TerminalContext = createContext<TerminalContextType | undefined>(undefined);
@@ -161,32 +162,23 @@ export const TerminalProvider: React.FC<TerminalProviderProps> = ({ children }) 
     };
   }, []);
 
-  useEffect(() => {
-    const loadProjects = async () => {
-      setLoading(true);
-      
-      try {
-        const data = await fetchProjects();
-        
-        if (data.length === 0) {
-          addToHistory({ 
-            type: 'error', 
-            content: 'Unable to fetch live project data. Displaying mock projects instead.' 
-          });
-        }
-        
-        setProjects(data);
-      } catch (error) {
-        addToHistory({ 
-          type: 'error', 
-          content: 'Failed to fetch projects. Please try again later.' 
-        });
-      } finally {
-        setLoading(false);
+  const refreshProjects = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchProjects();
+      if (data.length === 0) {
+        addToHistory({ type: 'error', content: 'Unable to fetch live project data. Displaying mock projects instead.' });
       }
-    };
+      setProjects(data);
+    } catch (error) {
+      addToHistory({ type: 'error', content: 'Failed to fetch projects. Please try again later.' });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    loadProjects();
+  useEffect(() => {
+    refreshProjects();
   }, []);
 
   const addToHistory = (response: CommandResponse) => {
@@ -678,6 +670,7 @@ Try some hidden commands! Type "easteregg" to see a hint.`
     setTechFilter,
     addToTerminalHistory,
     checkKonamiCode,
+    refreshProjects,
   };
 
   return (

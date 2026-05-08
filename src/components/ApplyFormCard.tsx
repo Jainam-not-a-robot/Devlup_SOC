@@ -1,21 +1,46 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { fetchFormFields } from "../services/apiClient";
 
 const bgImage = "/avatars/bg_web.jpg";
 
+interface FormField {
+  id: string;
+  name: string;
+  label: string;
+  type: string;
+  required: boolean;
+  order: number;
+}
+
 const ApplyFormCard = () => {
-  const [form, setForm] = useState({
-    mentee_name: "",
-    mentee_roll_number: "",
-    mentee_github_id: "",
-    mentee_email_id: "",
-    mentee_proposal_url: "",
-    project_name_1: "",
-    project_name_2: "",
-  });
+  const [formFields, setFormFields] = useState<FormField[]>([]);
+  const [form, setForm] = useState<Record<string, any>>({});
+  const [isLoading, setIsLoading] = useState(true);
 
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const loadFields = async () => {
+      try {
+        const fields = await fetchFormFields();
+        setFormFields(fields);
+        
+        // Initialize form state with empty strings for all fields
+        const initialForm: Record<string, string> = {};
+        fields.forEach((field: FormField) => {
+          initialForm[field.name] = "";
+        });
+        setForm(initialForm);
+      } catch (err) {
+        console.error("Failed to load form fields", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadFields();
+  }, []);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -31,18 +56,8 @@ const ApplyFormCard = () => {
     try {
       const { submitApplication } = await import("../services/apiClient");
       
-      // Map the frontend form to the backend ApplicationCreate schema
-      const payload = {
-        mentee_name: form.mentee_name,
-        mentee_roll_number: form.mentee_roll_number,
-        mentee_github_id: form.mentee_github_id,
-        mentee_email_id: form.mentee_email_id,
-        mentee_proposal_url: form.mentee_proposal_url,
-        project_name_1: form.project_name_1,
-        project_name_2: form.project_name_2 || undefined,
-      };
-      
-      await submitApplication(payload);
+      // Submit the dynamic payload
+      await submitApplication(form as any);
       setSubmitted(true);
     } catch (err: any) {
       setError(err.response?.data?.detail || "Failed to submit application");
@@ -86,7 +101,11 @@ const ApplyFormCard = () => {
             Contributor Application
           </h1>
 
-          {submitted ? (
+          {isLoading ? (
+            <div className="text-center text-[var(--terminal-text)]">
+              Loading form...
+            </div>
+          ) : submitted ? (
             <p className="text-center text-[var(--accent-color)]">
               Application submitted successfully.
             </p>
@@ -98,22 +117,15 @@ const ApplyFormCard = () => {
                 </p>
               )}
 
-              {/* BASIC INFO */}
-              {[
-                ["mentee_name", "Full Name"],
-                ["mentee_roll_number", "Roll Number"],
-                ["mentee_github_id", "GitHub ID"],
-                ["mentee_email_id", "Email ID"],
-                ["project_name_1", "Project Name 1"],
-                ["project_name_2", "Project Name 2 (Optional)"],
-                ["mentee_proposal_url", "Proposal URL / Link"],
-              ].map(([name, placeholder]) => (
+              {/* DYNAMIC INFO */}
+              {formFields.map((field) => (
                 <input
-                  key={name}
-                  name={name}
-                  placeholder={placeholder}
-                  type={name === "mentee_email_id" ? "email" : name === "mentee_proposal_url" ? "url" : "text"}
-                  required={name !== "project_name_2" && name !== "mentee_proposal_url"}
+                  key={field.id}
+                  name={field.name}
+                  placeholder={field.label}
+                  type={field.type || "text"}
+                  required={field.required}
+                  value={form[field.name] || ""}
                   onChange={handleChange}
                   className="w-full p-3 rounded-md outline-none transition-all duration-300 hover:scale-[1.02]"
                   style={{

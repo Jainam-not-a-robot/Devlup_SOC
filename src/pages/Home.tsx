@@ -31,7 +31,7 @@ const Home = () => {
     } else if (themeId === 2) {
       return {
         text: "SoC projects are out!",
-        className: "bg-gradient-to-r from-green-500/20 via-green-400/30 to-green-500/20 border-2 border-green-400/60 shadow-lg shadow-green-500/20"
+        className: "bg-gradient-to-r from-amber-500/15 via-orange-400/25 to-amber-500/15 border-2 border-orange-300/40 shadow-lg shadow-orange-500/10"
       };
     }
     return null;

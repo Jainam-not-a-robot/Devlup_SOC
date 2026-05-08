@@ -35,7 +35,7 @@ import {
   PRESERVE_LAST_CONTENT_ROUTE_STATE,
 } from "./constants/navigation";
 import FormPage from './pages/form';
-
+import LeavesEffect from "./components/LeavesEffect";
 
 const queryClient = new QueryClient();
 const WEBSITE_BACK_EXIT_STATE = "__devlupWebsiteBackExitState";
@@ -52,6 +52,7 @@ const AppContent = () => {
   location.pathname !== "/projects";
 
   const { showSnow } = useTheme();
+  const { showLeaves } = useTheme();
 
   useEffect(() => {
     if (isEntryPage || isMonitorEmbed) return;
@@ -105,55 +106,68 @@ const AppContent = () => {
   }, [isEntryPage, isMonitorEmbed, location.hash, location.pathname, location.search, navigate]);
 
   return (
-    <div className="flex flex-col min-h-screen relative">
-      {showSnow && !isMonitorEmbed && <SnowEffect />}
-      {/* <div className="relative" style={{ zIndex: 10 }}> */}
-        {!isEntryPage && <Navbar />}
+  <div className="flex flex-col min-h-screen relative overflow-hidden">
+    
+    {/* Background Effects */}
+    {!isMonitorEmbed && (
+      <>
+        {showSnow && <SnowEffect />}
+        {showLeaves && <LeavesEffect />}
+      </>
+    )}
 
-      {/* </div> */}
-      <main className="flex-grow relative" >
-        <Routes>
-          <Route path="/" element={<EntryLoader />} />
-          <Route path="/entry" element={<Entry3D />} />
-          <Route path="/home" element={<Home />} />
-          <Route path="/terminal" element={<Index />} />
-          <Route path="/projects" element={<Projects />} />
-          <Route path="/projects/ongoing" element={<Projects />} />
-          <Route path="/projects/completed" element={<Projects />} />
-          <Route path="/projects/archived" element={<Projects />} />
-          <Route path="/projects/issues" element={<Projects />} />
-          <Route path="/projects/:projectId" element={<ProjectDetail />} />
-          <Route path="/mentors" element={<Mentors />} />
-          <Route path="/leaderboard" element={<Leaderboard />} />
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute>
-                <AdminPanel />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/apply" element={<ApplyPage />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/stats" element={<Stats />} />
-          <Route path="/timeline" element={<Timeline />} />
-          <Route path="/apply/:projectId" element={<ApplyPage />} />
-          <Route path="/apply/form" element={<FormPage />} />
+    {/* Navbar */}
+    {!isEntryPage && (
+      <div className="relative z-20">
+        <Navbar />
+      </div>
+    )}
 
+    {/* Main Content */}
+    <main className="flex-grow relative z-10">
+      <Routes>
+        <Route path="/" element={<EntryLoader />} />
+        <Route path="/entry" element={<Entry3D />} />
+        <Route path="/home" element={<Home />} />
+        <Route path="/terminal" element={<Index />} />
+        <Route path="/projects" element={<Projects />} />
+        <Route path="/projects/ongoing" element={<Projects />} />
+        <Route path="/projects/completed" element={<Projects />} />
+        <Route path="/projects/archived" element={<Projects />} />
+        <Route path="/projects/issues" element={<Projects />} />
+        <Route path="/projects/:projectId" element={<ProjectDetail />} />
+        <Route path="/mentors" element={<Mentors />} />
+        <Route path="/leaderboard" element={<Leaderboard />} />
 
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </main>
-      {/* Only render Footer if not on ProjectDetail page (which has its own custom Footer) */}
-      {!isEntryPage && !isProjectDetailPage && (
-  <div className="relative" style={{ zIndex: 10 }}>
-    <Footer />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminPanel />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route path="/apply" element={<ApplyPage />} />
+        <Route path="/contact" element={<Contact />} />
+        <Route path="/stats" element={<Stats />} />
+        <Route path="/timeline" element={<Timeline />} />
+        <Route path="/apply/:projectId" element={<ApplyPage />} />
+        <Route path="/apply/form" element={<FormPage />} />
+
+        {/* Catch-all */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </main>
+
+    {/* Footer */}
+    {!isEntryPage && !isProjectDetailPage && (
+      <div className="relative z-20">
+        <Footer />
+      </div>
+    )}
   </div>
-)}
-
-    </div>
-  );
+);
 };
 
 const App = () => (

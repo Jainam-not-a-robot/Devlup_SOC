@@ -381,3 +381,61 @@ input:-webkit-autofill {
 }
 
 }
+.single-leaf {
+  position: absolute;
+  top: -10%;
+  opacity: 0.88;
+
+  animation-name: realisticLeafFall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+
+  filter:
+    drop-shadow(0 0 10px rgba(255, 170, 60, 0.16));
+
+  will-change: transform;
+}
+
+@keyframes realisticLeafFall {
+  0% {
+    transform:
+      translate3d(0px, -10vh, 0)
+      rotate(135deg);
+  }
+
+  15% {
+    transform:
+      translate3d(8px, 15vh, 0)
+      rotate(128deg);
+  }
+
+  30% {
+    transform:
+      translate3d(-6px, 30vh, 0)
+      rotate(142deg);
+  }
+
+  45% {
+    transform:
+      translate3d(10px, 45vh, 0)
+      rotate(136deg);
+  }
+
+  60% {
+    transform:
+      translate3d(-8px, 60vh, 0)
+      rotate(145deg);
+  }
+
+  75% {
+    transform:
+      translate3d(6px, 78vh, 0)
+      rotate(132deg);
+  }
+
+  100% {
+    transform:
+      translate3d(0px, 115vh, 0)
+      rotate(138deg);
+  }
+}

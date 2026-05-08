@@ -30,7 +30,7 @@ export default defineConfig(({ mode }) => {
     // Make env variables available in the client code
     // Prefix with VITE_ to expose to client
     define: {
-      'import.meta.env.VITE_THEME': JSON.stringify(env.VITE_THEME || process.env.VITE_THEME || '1'),
+      'import.meta.env.VITE_THEME': JSON.stringify(env.VITE_THEME || process.env.VITE_THEME || '2'),
       'import.meta.env.VITE_GOOGLE_SHEETS_ID': JSON.stringify(env.VITE_GOOGLE_SHEETS_ID || process.env.GOOGLE_SHEETS_ID || ''),
       'import.meta.env.VITE_GOOGLE_CLIENT_EMAIL': JSON.stringify(env.VITE_GOOGLE_CLIENT_EMAIL || process.env.GOOGLE_CLIENT_EMAIL || ''),
       'import.meta.env.VITE_GOOGLE_PRIVATE_KEY': JSON.stringify(env.VITE_GOOGLE_PRIVATE_KEY || process.env.GOOGLE_PRIVATE_KEY || ''),

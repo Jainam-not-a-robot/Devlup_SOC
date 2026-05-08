@@ -42,6 +42,7 @@ export interface ThemeColors {
   
   // Snow effect (only for winter theme)
   showSnow: boolean;
+  showLeaves: boolean;
 }
 
 export const themes: Record<ThemeId, ThemeColors> = {
@@ -74,6 +75,7 @@ export const themes: Record<ThemeId, ThemeColors> = {
     windowShadow15: 'rgba(74, 246, 38, 0.15)',
     windowShadow5: 'rgba(74, 246, 38, 0.05)',
     showSnow: false,
+    showLeaves: true,
   },
   
   // Theme 1: Winter (white and blue theme)
@@ -105,58 +107,61 @@ export const themes: Record<ThemeId, ThemeColors> = {
     windowShadow15: 'rgba(135, 206, 235, 0.15)',
     windowShadow5: 'rgba(135, 206, 235, 0.05)',
     showSnow: true,
+    showLeaves: false,
   },
   
   // Theme 2: Summer (Green theme - original)
 // Theme 2: Sunny Beach Day (Peach Sky → Blue Ocean → Sand)
 2: {
-  terminal: '#1E293B',
+  // Base
+  terminal: '#0F172A',
 
   // Text
-  terminalText: '#1E293B',
-  terminalDim: '#475569',
-  terminalAccent: '#FB923C',   // soft beach orange
+  terminalText: '#FFD166',      // warm summer yellow
+  terminalDim: '#f0cf72',       // muted slate
+  terminalAccent: '#FF9F1C',    // sunset orange
 
   // Status
-  terminalError: '#F43F5E',
-  terminalWarning: '#FACC15',
-  terminalSuccess: '#38BDF8',  // ocean blue
+  terminalError: '#FF5A5F',
+  terminalWarning: '#FFD60A',
+  terminalSuccess: '#2EC4B6',   // tropical aqua
 
-  // Background: TOP = sky, MID = ocean, BOTTOM = sand
-  bgGradientStart: '#FFE8D6',   // peach sky
-  bgGradientMid1: '#D6F0FF',    // baby blue ocean
-  bgGradientMid2: '#B3E5FF',    // deeper water blue
-  bgGradientMid3: '#FFF3C4',    // warm sand
-  bgGradientEnd: '#FFF8E7',     // beach cream
+  // Background — summer sunset + tech navy
+  bgGradientStart: '#3B2A1A',   // warm sunset brown
+  bgGradientMid1: '#0D1117',    // ocean blue
+  bgGradientMid2: '#0f1620',    // deep steel navy
+  bgGradientMid3: '#0a0f18',    // dark tech tone
+  bgGradientEnd: '#0a0e14',     // rich midnight navy
 
-  // Cards
-  terminalWindowBg: 'rgba(255,255,255,0.9)',
-  terminalWindowBorder: 'rgba(251,146,60,0.35)',
-  terminalWindowShadow: 'rgba(251,146,60,0.2)',
+  // Terminal Window
+  terminalWindowBg: 'rgba(15,23,42,0.88)',
+  terminalWindowBorder: 'rgba(255,159,28,0.22)',
+  terminalWindowShadow: 'rgba(255,159,28,0.12)',
 
   // Header
-  terminalHeaderBg: 'rgba(255,243,196,0.85)',
+  terminalHeaderBg: 'rgba(15,23,42,0.95)',
   terminalHeaderBgGradient:
-    'linear-gradient(90deg, rgba(255,243,196,0.85) 0%, rgba(251,146,60,0.4) 50%, rgba(255,243,196,0.85) 100%)',
-  terminalHeaderBorder: 'rgba(251,146,60,0.45)',
+    'linear-gradient(90deg, rgba(15,23,42,0.95) 0%, rgba(255,159,28,0.10) 50%, rgba(15,23,42,0.95) 100%)',
+
+  terminalHeaderBorder: 'rgba(255,159,28,0.25)',
 
   // Accent
-  accentColor: '#FB923C',
-  accentHover: '#1E293B',
+  accentColor: '#FF9F1C',
+  accentHover: '#FFD166',
 
-  accentGlow: 'rgba(251,146,60,0.5)',
-  accentGlow30: 'rgba(251,146,60,0.3)',
-  accentGlow80: 'rgba(251,146,60,0.75)',
-  accentHoverGlow60: 'rgba(30,41,59,0.2)',
+  accentGlow: 'rgba(255,159,28,0.45)',
+  accentGlow30: 'rgba(255,159,28,0.25)',
+  accentGlow80: 'rgba(255,159,28,0.75)',
+  accentHoverGlow60: 'rgba(255,209,102,0.35)',
 
   // Shadows
-  windowShadow15: 'rgba(251,146,60,0.15)',
-  windowShadow5: 'rgba(251,146,60,0.08)',
+  windowShadow15: 'rgba(0,0,0,0.22)',
+  windowShadow5: 'rgba(0,0,0,0.12)',
 
+  // Effects
   showSnow: false,
+  showLeaves: true,
 },
-
-
 };
 
 export const getTheme = (): ThemeId => {

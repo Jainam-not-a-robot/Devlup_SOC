@@ -55,13 +55,16 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   return <>{children}</>;
 };
 
-// Export a hook to get the current theme
 export const useTheme = () => {
   const themeId = getTheme();
+  const currentTheme = themes[themeId];
+
   return {
     themeId,
-    theme: themes[themeId],
-    showSnow: themes[themeId].showSnow,
+    theme: currentTheme,
+    showSnow: currentTheme.showSnow,
+    // Add this line to pull the property from your theme config
+    showLeaves: currentTheme.showLeaves, 
   };
 };
 

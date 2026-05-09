@@ -27,10 +27,23 @@ const Mentors = () => {
 
   const years = ["All", ...new Set(mentors.map((m) => String(m.year)))];
 
-  const filteredMentors =
-    selectedYear === "All"
+  const filteredMentors = (() => {
+    let list = selectedYear === "All"
       ? mentors
       : mentors.filter((m) => String(m.year) === selectedYear);
+
+    if (selectedYear === "All") {
+      const seen = new Set();
+      list = list.filter((m) => {
+        const key = m.email?.toLowerCase() || m.name?.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
+    return list;
+  })();
 
   if (loading) {
     return (

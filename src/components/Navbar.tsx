@@ -60,7 +60,7 @@ const Navbar = () => {
     { path: '/mentors', icon: GraduationCap, label: 'Mentors', shortcut:'Alt+M'},
     { path: '/projects', icon: Briefcase, label: 'Projects', shortcut: 'Alt+P' },
     // { path: '/apply', icon: User, label: 'Apply', shortcut: 'Alt+A' },
-    // { path: '/timeline', icon: Calendar, label: 'Timeline', shortcut: 'Alt+T' },
+    { path: '/timeline', icon: Calendar, label: 'Timeline', shortcut: 'Alt+T' },
     { path: '/stats', icon: BarChart, label: 'Stats', shortcut: 'Alt+S' },
     // { path: '/projects/issues', icon: AlertCircle, label: 'Issues', shortcut: 'Alt+I' },
     { path: '/contact', icon: Phone, label: 'Contact', shortcut: 'Alt+C' },
@@ -69,7 +69,7 @@ const Navbar = () => {
 
   return (
     <>
-      <nav className="bg-terminal border-b border-terminal-dim px-4 py-3">
+      <nav className="bg-black/60 backdrop-blur-md border-b border-terminal-dim px-4 py-3">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Link
@@ -140,7 +140,7 @@ const Navbar = () => {
 
       {/* Mobile Navigation Dropdown */}
       <div
-        className={`md:hidden bg-terminal border-b border-terminal-dim overflow-hidden transition-all duration-300 ease-out ${mobileMenuOpen
+        className={`md:hidden bg-black/60 backdrop-blur-md border-b border-terminal-dim overflow-hidden transition-all duration-300 ease-out ${mobileMenuOpen
           ? 'max-h-96 opacity-100 translate-y-0'
           : 'max-h-0 opacity-0 -translate-y-4'
           }`}

@@ -151,7 +151,7 @@ const AppContent = () => {
         {/* <Route path="/apply" element={<ApplyPage />} /> */}
         <Route path="/contact" element={<Contact />} />
         <Route path="/stats" element={<Stats />} />
-        {/* <Route path="/timeline" element={<Timeline />} /> */}
+        <Route path="/timeline" element={<Timeline />} />
         {/* <Route path="/apply/:projectId" element={<ApplyPage />} /> */}
         {/* <Route path="/apply/form" element={<FormPage />} /> */}
 

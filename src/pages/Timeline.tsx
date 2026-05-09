@@ -134,13 +134,13 @@ const Timeline = () => {
     // All nodes have the same base color
     const baseColor = isWinter 
       ? "text-cyan-300 border-cyan-400/50 bg-cyan-950/30"
-      : "text-green-400 border-green-500/30 bg-green-900/30";
+      : "text-[var(--terminal-text)] border-[var(--terminal-dim)] bg-terminal/50 backdrop-blur-md";
     
     // Only ongoing nodes get a subtle highlight
     if (status === 'ongoing') {
       return isWinter
         ? `${baseColor} shadow-[0_0_20px_rgba(34,211,238,0.4)] ring-2 ring-cyan-400/50`
-        : `${baseColor} shadow-[0_0_20px_rgba(74,222,128,0.4)] ring-2 ring-green-400/50`;
+        : `${baseColor} shadow-[0_0_20px_var(--accent-glow)] ring-2 ring-[var(--terminal-accent)]`;
     }
     
     return baseColor;
@@ -152,14 +152,16 @@ const Timeline = () => {
            if(status === 'ongoing') return "#22d3ee"; 
            return "#4b5563"; 
        }
-       return "#4ade80"; 
+       if(status === 'completed') return "var(--terminal-success)"; 
+       if(status === 'ongoing') return "var(--terminal-accent)"; 
+       return "var(--terminal-dim)"; 
   }
 
   return (
     <div className="min-h-screen bg-terminal/95 flex flex-col items-center p-2 sm:p-4 overflow-x-hidden">
       <div className="terminal-window max-w-[100rem] w-full mx-auto my-4 sm:my-8">
         <TerminalHeader title="Program Timeline" />
-        <div className="terminal-body min-h-[600px] p-4 sm:p-6 scrollbar-hide relative">
+        <div className="terminal-body min-h-[800px] p-4 sm:p-6 scrollbar-hide relative">
           
             {loading && <p className="text-terminal-dim text-center py-4">Loading timeline...</p>}
             {!loading && (
@@ -202,7 +204,7 @@ const Timeline = () => {
                         className="mb-6"
                       >
                         <div className={`w-20 h-20 rounded-full flex items-center justify-center border-2 
-                           ${isWinter ? "bg-cyan-950/30 border-cyan-500/30 text-cyan-400" : "bg-green-950/30 border-green-500/30 text-green-400"}`}
+                           ${isWinter ? "bg-cyan-950/30 border-cyan-500/30 text-cyan-400" : "bg-terminal/30 border-[var(--terminal-dim)] text-[var(--terminal-accent)]"}`}
                         >
                           <Calendar size={40} />
                         </div>
@@ -218,12 +220,12 @@ const Timeline = () => {
                     /* --- RENDER CIRCUIT TIMELINE (If milestones exist) --- */
                     <>
                         {/* Desktop View */}
-                        <div className="hidden lg:block relative h-[600px] w-full px-16 lg:px-24 my-12">
+                        <div className="hidden lg:block relative h-[800px] w-full px-16 lg:px-24 my-12">
                         
                             {/* Central Bus */}
                             <div className="absolute top-1/2 left-0 w-full h-1 bg-gray-700/30 -translate-y-1/2 z-0">
                                 {isWinter && <div className="absolute top-0 left-0 h-full w-full bg-cyan-500/20 blur-[4px]" />}
-                                <div className={`absolute top-0 left-0 h-full w-full ${isWinter ? 'bg-cyan-900/50' : 'bg-green-900/50'}`} />
+                                <div className={`absolute top-0 left-0 h-full w-full ${isWinter ? 'bg-cyan-900/50' : 'bg-[var(--terminal-dim)]/50'}`} />
                             </div>
 
                             {/* Milestones */}
@@ -274,7 +276,7 @@ const Timeline = () => {
                                         </svg>
 
                                         <div 
-                                            className="absolute flex flex-col items-center"
+                                            className={`absolute flex ${isTop ? 'flex-col-reverse' : 'flex-col'} items-center`}
                                             style={{
                                                 [isTop ? 'bottom' : 'top']: `${verticalReach}px`,
                                                 left: isTop ? `-${horizontalJog}px` : `${horizontalJog}px`,
@@ -286,7 +288,7 @@ const Timeline = () => {
                                                 initial={{ scale: 0, opacity: 0 }}
                                                 whileInView={{ scale: 1, opacity: 1 }}
                                                 transition={{ delay: index * 0.2 + 0.3, type: "spring" }}
-                                                className={`relative w-12 h-12 rounded-full border-2 flex items-center justify-center text-lg font-bold backdrop-blur-md z-20 mb-4
+                                                className={`relative w-12 h-12 rounded-full border-2 flex items-center justify-center text-lg font-bold backdrop-blur-md z-20 my-2
                                                     ${getStatusColor(status)}`}
                                             >
                                                 {index + 1}
@@ -303,14 +305,14 @@ const Timeline = () => {
                                                             ? "border-cyan-500/50 bg-cyan-950/40 shadow-[0_0_15px_rgba(34,211,238,0.2)]"
                                                             : "border-cyan-500/30 bg-cyan-950/30"
                                                         : status === 'ongoing'
-                                                            ? "border-green-500/50 bg-green-950/40 shadow-[0_0_15px_rgba(74,222,128,0.2)]"
-                                                            : "border-green-500/30 bg-green-950/30"
+                                                            ? "border-[var(--terminal-accent)] bg-terminal/60 shadow-[0_0_15px_var(--accent-glow)]"
+                                                            : "border-[var(--terminal-dim)] bg-terminal/40"
                                                     }`}
                                             >
-                                                <h4 className={`font-bold text-base mb-1 ${isWinter ? "text-cyan-100" : "text-green-100"}`}>
+                                                <h4 className={`font-bold text-base mb-1 ${isWinter ? "text-cyan-100" : "text-[var(--terminal-text)]"}`}>
                                                     {milestone.title}
                                                 </h4>
-                                                <div className={`flex items-center justify-center gap-2 text-xs font-mono mb-2 ${isWinter ? "text-cyan-400" : "text-green-400"}`}>
+                                                <div className={`flex items-center justify-center gap-2 text-xs font-mono mb-2 ${isWinter ? "text-cyan-400" : "text-[var(--terminal-accent)]"}`}>
                                                     <Clock size={12} />
                                                     {milestone.date}
                                                 </div>
@@ -356,7 +358,7 @@ const Timeline = () => {
 
 const CircuitEnd = ({ position, isWinter }: { position: 'left' | 'right', isWinter: boolean }) => {
     const isLeft = position === 'left';
-    const color = isWinter ? '#22d3ee' : '#4ade80';
+    const color = isWinter ? '#22d3ee' : 'var(--terminal-accent)';
     return (
         <svg 
             className={`absolute top-1/2 -translate-y-1/2 ${isLeft ? 'left-2' : 'right-2'} w-16 h-24 opacity-60 pointer-events-none z-0`}

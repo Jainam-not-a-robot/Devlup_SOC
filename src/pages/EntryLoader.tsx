@@ -3,6 +3,7 @@ import { Canvas, useLoader, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { EXRLoader, GLTFLoader, KTX2Loader } from "three-stdlib";
+import { fetchProjects } from "../services/apiClient";
 
 const TECH_FACTS = [
   "The first computer bug was an actual moth found in a relay-based machine in 1947.",
@@ -53,6 +54,7 @@ export default function EntryLoader() {
 
   useEffect(() => {
     useTexture.preload("/screenshots/screenshot.png");
+    fetchProjects().then(() => console.log("Backend awake")).catch(() => console.log("Backend wake up initiated"));
   }, []);
 
   useEffect(() => {

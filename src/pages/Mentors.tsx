@@ -166,6 +166,7 @@ const Mentors = () => {
                   src={mentor.image}
                   alt={mentor.name}
                   className="w-full h-[180px] object-cover rounded-lg"
+                  style={{ objectPosition: "center 20%" }}
                 />
               </div>
 

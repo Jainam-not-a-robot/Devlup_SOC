@@ -536,20 +536,14 @@ function Room({
     ? MONITOR_BACKLIGHT.intensity * 1.35
     : (isWinter ? MONITOR_BACKLIGHT.intensity * 0.82 : MONITOR_BACKLIGHT.intensity);
 
-  // --- CENTER-CAMERA RAYCASTER ---
+  // --- CENTER-CAMERA RAYCASTER (desktop + mobile tap) ---
   useEffect(() => {
     const raycaster = new Raycaster();
     const centerNDC = new Vector2(0, 0);
+    const tapNDC = new Vector2(0, 0);
 
-    const handleGlobalClick = () => {
-      const isLocked = document.pointerLockElement !== null;
-
-      if (isLocked) {
-        raycaster.setFromCamera(centerNDC, camera);
-      } else {
-        raycaster.setFromCamera(pointer, camera);
-      }
-
+    const performRaycast = (ndc: Vector2) => {
+      raycaster.setFromCamera(ndc, camera);
       const intersects = raycaster.intersectObjects(scene.children, true);
 
       const monitorHit = intersects.find((hit) => {
@@ -582,8 +576,33 @@ function Room({
       }
     };
 
+    const handleGlobalClick = () => {
+      const isLocked = document.pointerLockElement !== null;
+
+      if (isLocked) {
+        performRaycast(centerNDC);
+      } else {
+        performRaycast(pointer);
+      }
+    };
+
+    // Mobile tap: receives screen coordinates via custom event
+    const handleMobileTap = (e: Event) => {
+      const detail = (e as CustomEvent<{ screenX: number; screenY: number }>).detail;
+      if (!detail) return;
+
+      const rect = gl.domElement.getBoundingClientRect();
+      tapNDC.x = ((detail.screenX - rect.left) / rect.width) * 2 - 1;
+      tapNDC.y = -((detail.screenY - rect.top) / rect.height) * 2 + 1;
+      performRaycast(tapNDC);
+    };
+
     gl.domElement.addEventListener('click', handleGlobalClick);
-    return () => gl.domElement.removeEventListener('click', handleGlobalClick);
+    window.addEventListener('mobile-tap', handleMobileTap);
+    return () => {
+      gl.domElement.removeEventListener('click', handleGlobalClick);
+      window.removeEventListener('mobile-tap', handleMobileTap);
+    };
   }, [gl, camera, scene, pointer, monitorMesh, onLampClick, onMonitorClick, onSeatClick]);
 
   return (

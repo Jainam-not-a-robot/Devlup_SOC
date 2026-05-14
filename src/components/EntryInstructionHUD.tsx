@@ -39,6 +39,9 @@ type EntryInstructionHUDProps = {
   quickStartVisible: boolean;
   activeHint: EntryInstructionHint | null;
   statusToast: EntryInstructionHint | null;
+  isMobile?: boolean;
+  mobileRotationHintVisible?: boolean;
+  mobileGuideVisible?: boolean;
 };
 
 type PlayerXZ = {
@@ -87,6 +90,39 @@ const instructionSections = [
       { keys: ["CLICK"], label: "Activate center dot" },
       { keys: ["ESC"], label: "Unlock cursor" },
       { keys: ["H"], label: "Toggle guide" },
+    ],
+  },
+] as const;
+
+const mobileInstructionSections = [
+  {
+    id: "movement",
+    title: "Movement",
+    icon: Keyboard,
+    tone: "movement" as const,
+    items: [
+      { keys: ["LEFT"], label: "Drag left side to move" },
+      { keys: ["RIGHT"], label: "Drag right side to look" },
+    ],
+  },
+  {
+    id: "interaction",
+    title: "Interaction",
+    icon: MousePointerClick,
+    tone: "interaction" as const,
+    items: [
+      { keys: ["TAP"], label: "Tap objects to interact" },
+      { keys: ["TAP"], label: "Tap lamp / monitor" },
+    ],
+  },
+  {
+    id: "actions",
+    title: "Actions",
+    icon: Zap,
+    tone: "action" as const,
+    items: [
+      { keys: ["TAP"], label: "Tap chair to sit" },
+      { keys: ["2×TAP"], label: "Double-tap to stand" },
     ],
   },
 ] as const;
@@ -142,8 +178,12 @@ export default function EntryInstructionHUD({
   quickStartVisible,
   activeHint,
   statusToast,
+  isMobile = false,
+  mobileRotationHintVisible = false,
+  mobileGuideVisible = false,
 }: EntryInstructionHUDProps) {
   const [displayHint, setDisplayHint] = useState<EntryInstructionHint | null>(activeHint);
+  const activeSections = isMobile ? mobileInstructionSections : instructionSections;
 
   useEffect(() => {
     if (activeHint) {
@@ -167,18 +207,37 @@ export default function EntryInstructionHUD({
           <h2>Enter Room</h2>
         </div>
         <ol className="entry-quick-start">
-          <li>
-            <span>1</span>
-            Click to enter
-          </li>
-          <li>
-            <span>2</span>
-            Move with WASD
-          </li>
-          <li>
-            <span>3</span>
-            Interact with objects
-          </li>
+          {isMobile ? (
+            <>
+              <li>
+                <span>1</span>
+                Drag left side to walk
+              </li>
+              <li>
+                <span>2</span>
+                Drag right side to look
+              </li>
+              <li>
+                <span>3</span>
+                Tap objects to interact
+              </li>
+            </>
+          ) : (
+            <>
+              <li>
+                <span>1</span>
+                Click to enter
+              </li>
+              <li>
+                <span>2</span>
+                Move with WASD
+              </li>
+              <li>
+                <span>3</span>
+                Interact with objects
+              </li>
+            </>
+          )}
         </ol>
       </LiquidGlassCard>
 
@@ -203,7 +262,7 @@ export default function EntryInstructionHUD({
         </header>
 
         <div className="entry-hud-sections">
-          {instructionSections.map((section) => {
+          {activeSections.map((section) => {
             const SectionIcon = section.icon;
 
             return (
@@ -233,18 +292,21 @@ export default function EntryInstructionHUD({
         </div>
       </LiquidGlassCard>
 
-      <LiquidGlassCard
-        draggable={false}
-        blurIntensity="md"
-        glowIntensity="xs"
-        shadowIntensity="sm"
-        borderRadius="999px"
-        className={`entry-hud-mini ${controlsVisible ? "" : "is-visible"}`}
-        aria-hidden={controlsVisible}
-      >
-        <KeyCap value="H" />
-        <span>Help</span>
-      </LiquidGlassCard>
+      {/* H‑key pill — desktop only */}
+      {!isMobile && (
+        <LiquidGlassCard
+          draggable={false}
+          blurIntensity="md"
+          glowIntensity="xs"
+          shadowIntensity="sm"
+          borderRadius="999px"
+          className={`entry-hud-mini ${controlsVisible ? "" : "is-visible"}`}
+          aria-hidden={controlsVisible}
+        >
+          <KeyCap value="H" />
+          <span>Help</span>
+        </LiquidGlassCard>
+      )}
 
       {statusToast && (
         <LiquidGlassCard
@@ -309,6 +371,172 @@ export default function EntryInstructionHUD({
           </div>
         </LiquidGlassCard>
       )}
+
+      {/* Mobile Rotation Hint — 3 seconds */}
+      {mobileRotationHintVisible && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "rgba(0, 0, 0, 0.7)",
+            zIndex: 1000,
+            pointerEvents: "none",
+            animation: "fade-in 0.3s ease-out",
+          }}
+        >
+          <div
+            style={{
+              textAlign: "center",
+              color: "#34d399",
+              fontFamily: "Inter, sans-serif",
+            }}
+          >
+            <div style={{ fontSize: "48px", marginBottom: "16px" }}>📱</div>
+            <h2 style={{ fontSize: "28px", marginBottom: "12px", fontWeight: 600 }}>
+              Rotate Your Phone
+            </h2>
+            <p style={{ fontSize: "16px", opacity: 0.8 }}>
+              Landscape mode for best experience
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Guide — 8 seconds full tutorial */}
+      {mobileGuideVisible && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            display: "flex",
+            flexDirection: "column",
+            backgroundColor: "rgba(0, 0, 0, 0.95)",
+            zIndex: 999,
+            padding: "24px",
+            overflowY: "auto",
+            animation: "fade-in 0.3s ease-out",
+          }}
+        >
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+            <h1
+              style={{
+                color: "#34d399",
+                fontSize: "32px",
+                fontWeight: 700,
+                marginBottom: "32px",
+                textAlign: "center",
+                fontFamily: "Inter, sans-serif",
+              }}
+            >
+              Welcome to the Entry Room
+            </h1>
+
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "24px",
+                color: "#e5e7eb",
+                fontFamily: "Inter, sans-serif",
+              }}
+            >
+              {/* Movement */}
+              <div
+                style={{
+                  padding: "16px",
+                  borderLeft: "4px solid #34d399",
+                  backgroundColor: "rgba(52, 211, 153, 0.1)",
+                  borderRadius: "8px",
+                }}
+              >
+                <h3 style={{ color: "#34d399", marginBottom: "8px", fontSize: "18px", fontWeight: 600 }}>
+                  👆 Drag Left Side to Move
+                </h3>
+                <p style={{ fontSize: "14px", lineHeight: 1.6 }}>
+                  Use your left thumb to control character movement. Drag in any direction to explore the room.
+                </p>
+              </div>
+
+              {/* Look */}
+              <div
+                style={{
+                  padding: "16px",
+                  borderLeft: "4px solid #fbbf24",
+                  backgroundColor: "rgba(251, 191, 36, 0.1)",
+                  borderRadius: "8px",
+                }}
+              >
+                <h3 style={{ color: "#fbbf24", marginBottom: "8px", fontSize: "18px", fontWeight: 600 }}>
+                  👁️ Drag Right Side to Look
+                </h3>
+                <p style={{ fontSize: "14px", lineHeight: 1.6 }}>
+                  Use your right thumb to look around and explore. Swipe to rotate the camera view.
+                </p>
+              </div>
+
+              {/* Interact */}
+              <div
+                style={{
+                  padding: "16px",
+                  borderLeft: "4px solid #60a5fa",
+                  backgroundColor: "rgba(96, 165, 250, 0.1)",
+                  borderRadius: "8px",
+                }}
+              >
+                <h3 style={{ color: "#60a5fa", marginBottom: "8px", fontSize: "18px", fontWeight: 600 }}>
+                  ✋ Tap to Interact
+                </h3>
+                <p style={{ fontSize: "14px", lineHeight: 1.6 }}>
+                  Tap on objects like the lamp or monitor to interact with them. Tap the chair to sit down.
+                </p>
+              </div>
+
+              {/* Double Tap */}
+              <div
+                style={{
+                  padding: "16px",
+                  borderLeft: "4px solid #f87171",
+                  backgroundColor: "rgba(248, 113, 113, 0.1)",
+                  borderRadius: "8px",
+                }}
+              >
+                <h3 style={{ color: "#f87171", marginBottom: "8px", fontSize: "18px", fontWeight: 600 }}>
+                  🚶 Double-Tap to Stand Up
+                </h3>
+                <p style={{ fontSize: "14px", lineHeight: 1.6 }}>
+                  When seated, double-tap anywhere to stand back up and continue exploring.
+                </p>
+              </div>
+            </div>
+
+            <p
+              style={{
+                marginTop: "32px",
+                textAlign: "center",
+                color: "#9ca3af",
+                fontSize: "12px",
+                fontFamily: "Inter, sans-serif",
+              }}
+            >
+              This guide will close automatically
+            </p>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+      `}</style>
     </div>
   );
 }

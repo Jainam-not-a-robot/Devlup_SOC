@@ -16,9 +16,12 @@ import {
 import Home from "./Home";
 import Room from "../components/Room";
 import Player from "../components/Player";
+import MobilePlayer, { feedMobileJoystick } from "../components/MobilePlayer";
 import Snow from "../components/Snow";
 import PortalEnter from "../components/PortalEnter";
 import SmoothPointerLockControls from "../components/SmoothPointerLockControls";
+import TouchLookControls, { getTouchLookHandle } from "../components/TouchLookControls";
+import MobileControls from "../components/MobileControls";
 import EntryInstructionHUD, {
   getNearestEntryHint,
   type EntryHintZone,
@@ -34,6 +37,7 @@ import {
 } from "../constants/navigation";
 import { useDayNightCycle } from "../hooks/useDayNightCycle";
 import { isSummer, isWinter } from "../config/sceneTheme";
+import { useIsMobile } from "../hooks/useIsMobile";
 
 const ENTRY_BOUNDARY_PADDING = {
   tableFrontZ: 0.18,
@@ -87,6 +91,9 @@ const ENTRY_SNOW_SETTINGS = {
 const CAMERA_COORDINATE_UPDATE_INTERVAL = 1 / 4;
 const DAY_NIGHT_TRANSITION_SPEED = 0.04;
 const ENTRY_QUICK_START_AUTO_HIDE_MS = 8000;
+const MOBILE_TUTORIAL_ROTATION_HINT_MS = 3000;
+const MOBILE_TUTORIAL_GUIDE_MS = 8000;
+const MOBILE_TUTORIAL_STORAGE_KEY = "mobile-tutorial-seen";
 const WINDOW_LIGHT_POSITION: [number, number, number] = [-7.4, 4.9, 4.8];
 const WINDOW_LIGHT_TARGET: [number, number, number] = [0.4, 1.6, -2.4];
 const SUMMER_SUN_LIGHT_POSITION: [number, number, number] = [-3.2, 7.2, 8.8];
@@ -419,6 +426,8 @@ export default function Entry3D() {
   const [quickStartVisible, setQuickStartVisible] = useState(true);
   const [instructionPanelVisible, setInstructionPanelVisible] = useState(false);
   const [interactionHintPoints, setInteractionHintPoints] = useState<EntryInteractionHintPoints>({});
+  const [mobileRotationHintVisible, setMobileRotationHintVisible] = useState(false);
+  const [mobileGuideVisible, setMobileGuideVisible] = useState(false);
   const [coordinates, setCoordinates] = useState<Coordinates>({
     x: ENTRY_SPAWN_POINT.x,
     y: ENTRY_SPAWN_POINT.y,
@@ -456,11 +465,13 @@ export default function Entry3D() {
     setLampSpotEnabled(nextLampState);
   }, []);
 
+  const isMobile = useIsMobile();
+
   const handleMonitorInteract = useCallback((point?: Vector3, normal?: Vector3) => {
     if (isEntering) return;
     setSeatPosition(null);
     
-    if (document.pointerLockElement) {
+    if (!isMobile && document.pointerLockElement) {
       document.exitPointerLock();
     }
     
@@ -472,7 +483,7 @@ export default function Entry3D() {
 
     setPortalTarget(targetPoint);
     setIsEntering(true);
-  }, [isEntering]);
+  }, [isEntering, isMobile]);
 
   const handleSeatInteract = useCallback(() => {
     if (isEntering) return;
@@ -485,20 +496,22 @@ export default function Entry3D() {
       ),
     );
 
-    // INSTANT LOCK: Automatically trigger viewing mode when you sit down
-    const canvas = document.querySelector('canvas');
-    if (canvas && document.pointerLockElement === null) {
-      canvas.requestPointerLock();
+    // INSTANT LOCK: Automatically trigger viewing mode when you sit down (desktop only)
+    if (!isMobile) {
+      const canvas = document.querySelector('canvas');
+      if (canvas && document.pointerLockElement === null) {
+        canvas.requestPointerLock();
+      }
     }
 
-  }, [isEntering]);
+  }, [isEntering, isMobile]);
 
   const handleStandUp = useCallback(() => {
     setSeatPosition(null);
-    if (document.pointerLockElement) {
+    if (!isMobile && document.pointerLockElement) {
       document.exitPointerLock();
     }
-  }, []);
+  }, [isMobile]);
   
   const interactionTargets = useMemo<InteractionTarget[]>(
     () => [
@@ -626,6 +639,63 @@ export default function Entry3D() {
     };
   }, []);
 
+  /* ── Mobile tutorial: rotation hint (3s) → guide (8s) ── */
+  useEffect(() => {
+    if (!isMobile) return;
+
+    const hasSeenTutorial = window.localStorage.getItem(
+      MOBILE_TUTORIAL_STORAGE_KEY,
+    ) === "true";
+
+    if (hasSeenTutorial) return;
+
+    setMobileRotationHintVisible(true);
+
+    const rotationTimeout = window.setTimeout(() => {
+      setMobileRotationHintVisible(false);
+      setMobileGuideVisible(true);
+
+      const guideTimeout = window.setTimeout(() => {
+        setMobileGuideVisible(false);
+        window.localStorage.setItem(MOBILE_TUTORIAL_STORAGE_KEY, "true");
+      }, MOBILE_TUTORIAL_GUIDE_MS);
+
+      return () => window.clearTimeout(guideTimeout);
+    }, MOBILE_TUTORIAL_ROTATION_HINT_MS);
+
+    return () => window.clearTimeout(rotationTimeout);
+  }, [isMobile]);
+
+  /* ── Mobile control callbacks ── */
+  const handleMobileJoystick = useCallback(
+    (input: { x: number; y: number }) => {
+      feedMobileJoystick(input);
+    },
+    [],
+  );
+
+  const handleMobileLook = useCallback(
+    (deltaX: number, deltaY: number) => {
+      getTouchLookHandle()?.feedLookDelta(deltaX, deltaY);
+    },
+    [],
+  );
+
+  const handleMobileTap = useCallback(
+    (screenX: number, screenY: number) => {
+      window.dispatchEvent(
+        new CustomEvent("mobile-tap", { detail: { screenX, screenY } }),
+      );
+    },
+    [],
+  );
+
+  const handleMobileDoubleTap = useCallback(() => {
+    if (seatPosition) {
+      handleStandUp();
+    }
+  }, [seatPosition, handleStandUp]);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (
@@ -649,6 +719,8 @@ export default function Entry3D() {
     };
 
     const handleMouseDown = (event: MouseEvent) => {
+      if (isMobile) return; // skip pointer lock on mobile
+
       const target = event.target as HTMLElement | null;
       if (target?.closest("[data-ui-control='true']")) {
         return;
@@ -669,7 +741,7 @@ export default function Entry3D() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("mousedown", handleMouseDown); 
     };
-  }, [seatPosition, isEntering, handleStandUp]);
+  }, [seatPosition, isEntering, handleStandUp, isMobile]);
 
   return (
     <div
@@ -744,21 +816,33 @@ export default function Entry3D() {
 
         {seatPosition && <SeatedCameraLock position={seatPosition} />}
 
-        {/* WASD movement */}
-        {!isEntering && !isSeated && (
+        {/* WASD movement (desktop) / virtual joystick movement (mobile) */}
+        {!isEntering && !isSeated && !isMobile && (
           <Player
             constrainPosition={applyEntryRoomBoundaries}
             standingHeight={ENTRY_ROOM_BOUNDARIES.standingHeight}
           />
         )}
+        {!isEntering && !isSeated && isMobile && (
+          <MobilePlayer
+            constrainPosition={applyEntryRoomBoundaries}
+            standingHeight={ENTRY_ROOM_BOUNDARIES.standingHeight}
+          />
+        )}
 
-        {/* mouse look */}
-        {!isEntering && (
+        {/* mouse look (desktop) / touch look (mobile) */}
+        {!isEntering && !isMobile && (
           <SmoothPointerLockControls
             pointerSpeed={0.06}
             smoothing={12}
             maxMovementPerEvent={36}
             lockSettlingMs={120}
+          />
+        )}
+        {!isEntering && isMobile && (
+          <TouchLookControls
+            sensitivity={0.3}
+            smoothing={14}
           />
         )}
       </Canvas>
@@ -768,24 +852,41 @@ export default function Entry3D() {
         quickStartVisible={quickStartVisible}
         activeHint={entryContextHint}
         statusToast={playerStatus}
+        isMobile={isMobile}
+        mobileRotationHintVisible={mobileRotationHintVisible}
+        mobileGuideVisible={mobileGuideVisible}
       />
 
-      <div
-        style={{
-          position: "absolute",
-          left: "50%",
-          top: "50%",
-          transform: "translate(-50%, -50%)",
-          width: 10,
-          height: 10,
-          borderRadius: "50%",
-          border: "2px solid #34d399",
-          background: "rgba(52,211,153,0.2)",
-          zIndex: 10,
-          pointerEvents: "none",
-          userSelect: "none",
-        }}
-      />
+      {/* Crosshair — desktop only */}
+      {!isMobile && (
+        <div
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 10,
+            height: 10,
+            borderRadius: "50%",
+            border: "2px solid #34d399",
+            background: "rgba(52,211,153,0.2)",
+            zIndex: 10,
+            pointerEvents: "none",
+            userSelect: "none",
+          }}
+        />
+      )}
+
+      {/* Mobile touch controls overlay */}
+      {isMobile && (
+        <MobileControls
+          visible={!isEntering}
+          onJoystickChange={handleMobileJoystick}
+          onLookChange={handleMobileLook}
+          onTap={handleMobileTap}
+          onDoubleTap={handleMobileDoubleTap}
+        />
+      )}
 
       {shouldWarmHome && (
         <div

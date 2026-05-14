@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { useToast } from '../../hooks/use-toast';
-import { Trash2, Edit, Plus, X, Upload, ImageIcon } from 'lucide-react';
+import { Trash2, Edit, Plus, X, Upload, ImageIcon, ExternalLink } from 'lucide-react';
 
 type MentorInput = { name: string; role: string; email: string; linkedin: string; github: string; image_url: string };
 
@@ -253,6 +253,7 @@ const ProjectsManager: React.FC = () => {
                 <TableHead className="text-terminal-text">Status</TableHead>
                 <TableHead className="text-terminal-text">Year</TableHead>
                 <TableHead className="text-terminal-text">Mentors</TableHead>
+                <TableHead className="text-terminal-text">Docs</TableHead>
                 <TableHead className="text-terminal-text">Approval</TableHead>
                 <TableHead className="text-terminal-text text-right">Actions</TableHead>
               </TableRow>
@@ -260,7 +261,7 @@ const ProjectsManager: React.FC = () => {
             <TableBody>
               {projects.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-terminal-dim py-4">No projects found.</TableCell>
+                  <TableCell colSpan={9} className="text-center text-terminal-dim py-4">No projects found.</TableCell>
                 </TableRow>
               )}
               {projects.map((p) => (
@@ -278,6 +279,16 @@ const ProjectsManager: React.FC = () => {
                   <TableCell className="text-terminal-text capitalize">{p.status}</TableCell>
                   <TableCell className="text-terminal-text">{p.year}</TableCell>
                   <TableCell className="text-terminal-text">{p.mentors?.map((m: any) => typeof m === 'object' && m !== null ? m.name : m).join(', ') || 'None'}</TableCell>
+                  <TableCell>
+                    {p.docs ? (
+                      <a href={p.docs.startsWith('http') ? p.docs : `https://${p.docs}`} target="_blank" rel="noopener noreferrer" className="text-terminal-accent hover:text-terminal-accent/80 inline-flex items-center gap-1" title={p.docs}>
+                        <ExternalLink size={14} />
+                        <span className="text-xs">Open</span>
+                      </a>
+                    ) : (
+                      <span className="text-terminal-dim text-xs">—</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <div className={`text-xs font-bold uppercase tracking-wider ${p.approval_status === 'accepted' ? 'text-green-400' : p.approval_status === 'rejected' ? 'text-red-400' : 'text-yellow-400'}`}>
                       {p.approval_status || 'accepted'}

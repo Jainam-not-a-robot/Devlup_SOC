@@ -5,16 +5,21 @@ function detectMobile(): boolean {
 
   const hasTouch =
     "ontouchstart" in window ||
-    navigator.maxTouchPoints > 0;
+    navigator.maxTouchPoints > 0 ||
+    (navigator as any).msMaxTouchPoints > 0;
 
   const mobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
     navigator.userAgent,
   );
 
-  // Treat narrow screens with touch as mobile even if UA doesn't match (e.g. tablets)
-  const narrowViewport = window.innerWidth <= 1024 && hasTouch;
+  const prefersTouch =
+    window.matchMedia("(hover: none)").matches ||
+    window.matchMedia("(pointer: coarse)").matches;
 
-  return mobileUA || narrowViewport;
+  const narrowViewport = window.innerWidth <= 1024;
+
+  // Mobile when the device is touch-first, is a mobile UA, or is a touch-enabled small viewport.
+  return mobileUA || hasTouch || (prefersTouch && narrowViewport);
 }
 
 /**

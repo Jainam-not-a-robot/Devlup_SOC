@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useAuth } from './AuthContext';
 import { CommandResponse } from '../components/CommandOutput';
 import { fetchProjects } from '../services/sheetsService';
 import { Project } from '../components/ProjectCard';
@@ -107,6 +108,7 @@ interface TerminalProviderProps {
 }
 
 export const TerminalProvider: React.FC<TerminalProviderProps> = ({ children }) => {
+  const { setLoginModalOpen } = useAuth();
   const [commandHistory, setCommandHistory] = useState<CommandResponse[]>([
     { 
       type: 'response', 
@@ -269,6 +271,16 @@ export const TerminalProvider: React.FC<TerminalProviderProps> = ({ children }) 
     const args = parts.slice(1);
     
     addToHistory({ type: 'command', content: command });
+
+    // Secret passphrase to open admin panel
+    if (commandLower === 'khul ja sim sim') {
+      setLoginModalOpen(true);
+      addToHistory({ 
+        type: 'response', 
+        content: 'Opening Admin Login...' 
+      });
+      return;
+    }
     
     switch(baseCommand) {
       case 'help':
@@ -453,6 +465,8 @@ export const TerminalProvider: React.FC<TerminalProviderProps> = ({ children }) 
           )
         });
         break;
+
+
         
       // case 'timeline':
       // case 'tl':

@@ -1,4 +1,4 @@
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
+﻿import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Environment } from "@react-three/drei";
 import { useNavigate } from "react-router-dom";
@@ -91,6 +91,9 @@ const ENTRY_SNOW_SETTINGS = {
 const CAMERA_COORDINATE_UPDATE_INTERVAL = 1 / 4;
 const DAY_NIGHT_TRANSITION_SPEED = 0.04;
 const ENTRY_QUICK_START_AUTO_HIDE_MS = 8000;
+const MOBILE_TUTORIAL_ROTATION_HINT_MS = 3000;
+const MOBILE_TUTORIAL_GUIDE_MS = 8000;
+const MOBILE_TUTORIAL_STORAGE_KEY = "mobile-tutorial-seen";
 const WINDOW_LIGHT_POSITION: [number, number, number] = [-7.4, 4.9, 4.8];
 const WINDOW_LIGHT_TARGET: [number, number, number] = [0.4, 1.6, -2.4];
 const SUMMER_SUN_LIGHT_POSITION: [number, number, number] = [-3.2, 7.2, 8.8];
@@ -423,6 +426,8 @@ export default function Entry3D() {
   const [quickStartVisible, setQuickStartVisible] = useState(true);
   const [instructionPanelVisible, setInstructionPanelVisible] = useState(false);
   const [interactionHintPoints, setInteractionHintPoints] = useState<EntryInteractionHintPoints>({});
+  const [mobileRotationHintVisible, setMobileRotationHintVisible] = useState(false);
+  const [mobileGuideVisible, setMobileGuideVisible] = useState(false);
   const [coordinates, setCoordinates] = useState<Coordinates>({
     x: ENTRY_SPAWN_POINT.x,
     y: ENTRY_SPAWN_POINT.y,
@@ -634,6 +639,33 @@ export default function Entry3D() {
     };
   }, []);
 
+  /* ── Mobile tutorial: rotation hint (3s) → guide (8s) ── */
+  useEffect(() => {
+    if (!isMobile) return;
+
+    const hasSeenTutorial = window.localStorage.getItem(
+      MOBILE_TUTORIAL_STORAGE_KEY,
+    ) === "true";
+
+    if (hasSeenTutorial) return;
+
+    setMobileRotationHintVisible(true);
+
+    const rotationTimeout = window.setTimeout(() => {
+      setMobileRotationHintVisible(false);
+      setMobileGuideVisible(true);
+
+      const guideTimeout = window.setTimeout(() => {
+        setMobileGuideVisible(false);
+        window.localStorage.setItem(MOBILE_TUTORIAL_STORAGE_KEY, "true");
+      }, MOBILE_TUTORIAL_GUIDE_MS);
+
+      return () => window.clearTimeout(guideTimeout);
+    }, MOBILE_TUTORIAL_ROTATION_HINT_MS);
+
+    return () => window.clearTimeout(rotationTimeout);
+  }, [isMobile]);
+
   /* ── Mobile control callbacks ── */
   const handleMobileJoystick = useCallback(
     (input: { x: number; y: number }) => {
@@ -821,6 +853,8 @@ export default function Entry3D() {
         activeHint={entryContextHint}
         statusToast={playerStatus}
         isMobile={isMobile}
+        mobileRotationHintVisible={mobileRotationHintVisible}
+        mobileGuideVisible={mobileGuideVisible}
       />
 
       {/* Crosshair — desktop only */}

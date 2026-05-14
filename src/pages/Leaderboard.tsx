@@ -4,12 +4,14 @@ import { FaGithub, FaUsers, FaChartLine } from "react-icons/fa";
 import { useTheme } from "../components/ThemeProvider";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import LeavesEffect from "@/components/LeavesEffect";
 
 const medals = ["🥈", "🥇", "🥉"];
 const podiumHeights = [150, 200, 140]; // silver, gold, bronze
 
 const Leaderboard = () => {
   const { showSnow } = useTheme();
+  const { showLeaves } = useTheme();
   const navigate = useNavigate();
 
   const sorted = [...contributors].sort(
@@ -35,6 +37,7 @@ const Leaderboard = () => {
       }}
     >
       {showSnow && <SnowEffect />}
+      {showLeaves && <LeavesEffect />}
 
       {/* HERO */}
       <section className="pt-32 pb-12 text-center relative z-10">

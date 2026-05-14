@@ -4,9 +4,11 @@ import { useTheme } from "../components/ThemeProvider";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { fetchMentors } from "../services/apiClient";
+import LeavesEffect from "@/components/LeavesEffect";
 
 const Mentors = () => {
   const { showSnow } = useTheme();
+  const { showLeaves } = useTheme();
   const [selectedYear, setSelectedYear] = useState("All");
   const [mentors, setMentors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,6 +71,7 @@ const Mentors = () => {
       }}
     >
       {showSnow && <SnowEffect />}
+      {showLeaves && <LeavesEffect />}
 
       {/* YEAR FILTER */}
       <div className="fixed top-28 right-6 z-50">

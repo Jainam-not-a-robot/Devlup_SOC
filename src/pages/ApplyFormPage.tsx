@@ -1,9 +1,11 @@
 import SnowEffect from "../components/SnowEffect";
 import { useTheme } from "../components/ThemeProvider";
 import ApplyFormCard from "../components/ApplyFormCard";
+import LeavesEffect from "@/components/LeavesEffect";
 
 const ApplyFormPage = () => {
   const { showSnow } = useTheme();
+  const { showLeaves } = useTheme();
 
   return (
     <div
@@ -21,6 +23,7 @@ const ApplyFormPage = () => {
       }}
     >
       {showSnow && <SnowEffect />}
+      {showLeaves && <LeavesEffect />}
       <ApplyFormCard />
     </div>
   );

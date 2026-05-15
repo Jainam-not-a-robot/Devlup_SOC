@@ -35,6 +35,7 @@ import {
   PRESERVE_LAST_CONTENT_ROUTE_STATE,
 } from "./constants/navigation";
 import FormPage from './pages/form';
+import ApplyFormPage from './pages/ApplyFormPage';
 import LeavesEffect from "./components/LeavesEffect";
 
 const queryClient = new QueryClient();
@@ -148,12 +149,12 @@ const AppContent = () => {
           }
         />
 
-        <Route path="/apply" element={<ApplyPage />} />
+        <Route path="/apply" element={<ApplyFormPage />} />
+        <Route path="/apply/:projectId" element={<ApplyFormPage />} />
+        <Route path="/apply/form" element={<FormPage />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/stats" element={<Stats />} />
         <Route path="/timeline" element={<Timeline />} />
-        {/* <Route path="/apply/:projectId" element={<ApplyPage />} /> */}
-        {/* <Route path="/apply/form" element={<FormPage />} /> */}
 
         {/* Catch-all */}
         <Route path="*" element={<NotFound />} />

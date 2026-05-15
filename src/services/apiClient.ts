@@ -49,6 +49,28 @@ export const adminLogin = async (username: string, password: string) => {
   }
 };
 
+// Function to log in with Google ID token
+export const googleLogin = async (token: string) => {
+  try {
+    const response = await apiClient.post('/auth/google', { token });
+    return response.data;
+  } catch (error) {
+    console.error("Error logging in with Google:", error);
+    throw error;
+  }
+};
+
+// Function to fetch the current user's profile
+export const fetchCurrentUser = async () => {
+  try {
+    const response = await apiClient.get('/auth/me');
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching current user:", error);
+    throw error;
+  }
+};
+
 // Function to submit an application to the FastAPI backend
 export const submitApplication = async (data: ApplicationPayload) => {
   try {
@@ -56,6 +78,42 @@ export const submitApplication = async (data: ApplicationPayload) => {
     return response.data;
   } catch (error) {
     console.error("Error submitting application:", error);
+    throw error;
+  }
+};
+
+// Function to fetch the current user's own application
+export const fetchMyApplication = async () => {
+  try {
+    const response = await apiClient.get('/applications/me');
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.status === 404) {
+      return null; // No application found
+    }
+    console.error("Error fetching my application:", error);
+    throw error;
+  }
+};
+
+// Function to update the current user's own application
+export const updateMyApplication = async (data: Partial<ApplicationPayload>) => {
+  try {
+    const response = await apiClient.put('/applications/me', data);
+    return response.data;
+  } catch (error) {
+    console.error("Error updating my application:", error);
+    throw error;
+  }
+};
+
+// Function to fetch the application deadline info
+export const fetchDeadlineInfo = async () => {
+  try {
+    const response = await apiClient.get('/applications/deadline/info');
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching deadline info:", error);
     throw error;
   }
 };

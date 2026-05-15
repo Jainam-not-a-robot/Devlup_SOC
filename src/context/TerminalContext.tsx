@@ -298,6 +298,8 @@ export const TerminalProvider: React.FC<TerminalProviderProps> = ({ children }) 
   view [id], v [id], [id]    View details of a specific project
   stats [options]          View site analytics data
   mentors, m               Show all project mentors
+  apply, a                 Open the application form
+  timeline, tl             Open the Timeline page
   shortcuts, keys          Display keyboard shortcuts
   about                     Show information about this terminal`
         });
@@ -468,23 +470,23 @@ export const TerminalProvider: React.FC<TerminalProviderProps> = ({ children }) 
 
 
         
-      // case 'timeline':
-      // case 'tl':
-      //   window.location.href = '/timeline';
-      //   addToHistory({ 
-      //     type: 'response', 
-      //     content: 'Opening Timeline page...' 
-      //   });
-      //   break;
+      case 'timeline':
+      case 'tl':
+        window.location.href = '/timeline';
+        addToHistory({ 
+          type: 'response', 
+          content: 'Opening Timeline page...' 
+        });
+        break;
         
-      // case 'apply':
-      // case 'a':
-      //   window.location.href = '/apply';
-      //   addToHistory({ 
-      //     type: 'response', 
-      //     content: 'Opening contributor application form...' 
-      //   });
-      //   break;
+      case 'apply':
+      case 'a':
+        window.location.href = '/apply';
+        addToHistory({ 
+          type: 'response', 
+          content: 'Opening contributor application form...' 
+        });
+        break;
         
       case 'matrix':
         addToHistory({ 

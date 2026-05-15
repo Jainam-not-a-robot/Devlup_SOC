@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Home, Briefcase, User, BarChart, Phone, Calendar, Menu, X, GraduationCap, AlertCircle} from 'lucide-react';
-import { Trophy } from "lucide-react";
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Home, Briefcase, User, BarChart, Phone, Calendar, Menu, X, GraduationCap, LogOut, LogIn } from 'lucide-react';
 import { useTerminal } from '../context/TerminalContext';
+import { useAuth } from '../context/AuthContext';
+import { googleLogin } from '../services/apiClient';
+import { useToast } from '../hooks/use-toast';
 import {
   Tooltip,
   TooltipContent,
@@ -11,10 +13,34 @@ import {
 } from "@/components/ui/tooltip";
 import { PRESERVE_LAST_CONTENT_ROUTE_STATE } from "../constants/navigation";
 
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+// Load the Google Identity Services script
+const loadGoogleScript = (): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    if (document.getElementById('google-identity-script')) {
+      resolve();
+      return;
+    }
+    const script = document.createElement('script');
+    script.id = 'google-identity-script';
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Failed to load Google Identity Services'));
+    document.head.appendChild(script);
+  });
+};
+
 const Navbar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { projects } = useTerminal();
+  const { isAuthenticated, googleUser, isGoogleUser, logout, login, setGoogleUser } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { toast } = useToast();
+  const googleInitializedRef = useRef(false);
 
   // Extract projectId from the URL path manually since useParams() doesn't work at this level
   const projectId = location.pathname.startsWith('/projects/') && location.pathname !== '/projects'
@@ -27,7 +53,6 @@ const Navbar = () => {
   // Determine navbar text and logo based on current project category
   const getNavbarContent = () => {
     if (currentProject && currentProject.category) {
-      // Check if category indicates SoC X RAID (could be '1' or text containing 'raid')
       if (currentProject.category === '1' ||
         currentProject.category.toString().toLowerCase().includes('soc x raid') ||
         currentProject.category.toString().toLowerCase().includes('raid')) {
@@ -45,6 +70,68 @@ const Navbar = () => {
 
   const navbarContent = getNavbarContent();
 
+  // Initialize Google Identity Services once
+  useEffect(() => {
+    if (googleInitializedRef.current || !GOOGLE_CLIENT_ID) return;
+
+    const init = async () => {
+      try {
+        await loadGoogleScript();
+        if (window.google?.accounts?.id) {
+          window.google.accounts.id.initialize({
+            client_id: GOOGLE_CLIENT_ID,
+            callback: handleGoogleCallback,
+          });
+          googleInitializedRef.current = true;
+        }
+      } catch (err) {
+        console.error('Google Identity Services failed to load:', err);
+      }
+    };
+
+    init();
+  }, []);
+
+  const handleGoogleCallback = async (response: { credential: string }) => {
+    try {
+      const data = await googleLogin(response.credential);
+      if (data && data.access_token) {
+        login(data.access_token);
+        if (data.user) {
+          setGoogleUser(data.user);
+        }
+        toast({
+          title: "Signed In",
+          description: `Welcome, ${data.user?.name || 'User'}!`,
+        });
+      } else {
+        throw new Error("No access token found");
+      }
+    } catch (error: any) {
+      let msg = "Google sign-in failed.";
+      if (error.response?.data?.detail) {
+        msg = error.response.data.detail;
+      }
+      toast({
+        title: "Sign-In Failed",
+        description: msg,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleGoogleSignIn = () => {
+    if (window.google?.accounts?.id) {
+      window.google.accounts.id.prompt();
+    } else {
+      toast({
+        title: "Error",
+        description: "Google Sign-In is not available. Please try again later.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const isActive = (path: string) => {
     return location.pathname === path ? 'text-terminal-accent' : 'text-terminal-dim hover:text-terminal-text';
   };
@@ -59,12 +146,10 @@ const Navbar = () => {
     },
     { path: '/mentors', icon: GraduationCap, label: 'Mentors', shortcut:'Alt+M'},
     { path: '/projects', icon: Briefcase, label: 'Projects', shortcut: 'Alt+P' },
-    // { path: '/apply', icon: User, label: 'Apply', shortcut: 'Alt+A' },
+    { path: '/apply', icon: User, label: 'Apply', shortcut: 'Alt+A' },
     { path: '/timeline', icon: Calendar, label: 'Timeline', shortcut: 'Alt+T' },
     { path: '/stats', icon: BarChart, label: 'Stats', shortcut: 'Alt+S' },
-    // { path: '/projects/issues', icon: AlertCircle, label: 'Issues', shortcut: 'Alt+I' },
     { path: '/contact', icon: Phone, label: 'Contact', shortcut: 'Alt+C' },
-    // { path: '/leaderboard', icon: Trophy, label: 'Leaderboard', shortcut: 'Alt+L' },
   ];
 
   return (
@@ -123,11 +208,64 @@ const Navbar = () => {
                   </Tooltip>
                 );
               })}
+
+              {/* Google Sign In / User Section */}
+              {isGoogleUser && googleUser ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => {
+                        logout();
+                        toast({ title: "Signed Out", description: "You have been signed out." });
+                      }}
+                      className="flex items-center gap-1.5 text-terminal-dim hover:text-terminal-text transition-colors"
+                    >
+                      {googleUser.picture ? (
+                        <img
+                          src={googleUser.picture}
+                          alt={googleUser.name || 'User'}
+                          className="h-6 w-6 rounded-full border border-terminal-accent/50"
+                        />
+                      ) : (
+                        <User size={16} />
+                      )}
+                      <LogOut size={14} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <span>
+                      {`Signed in as ${googleUser.name || googleUser.email} · Click to sign out`}
+                    </span>
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={handleGoogleSignIn}
+                      className="flex items-center gap-1 text-terminal-dim hover:text-terminal-accent transition-colors"
+                    >
+                      <LogIn size={16} />
+                      <span>Sign In</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <span>Sign in with Google</span>
+                  </TooltipContent>
+                </Tooltip>
+              )}
             </TooltipProvider>
           </div>
 
           {/* Mobile Navigation Menu Button */}
-          <div className="md:hidden">
+          <div className="md:hidden flex items-center gap-2">
+            {isGoogleUser && googleUser?.picture && (
+              <img
+                src={googleUser.picture}
+                alt={googleUser.name || 'User'}
+                className="h-7 w-7 rounded-full border border-terminal-accent/50"
+              />
+            )}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="text-terminal-text hover:text-terminal-accent transition-colors p-2"
@@ -141,7 +279,7 @@ const Navbar = () => {
       {/* Mobile Navigation Dropdown */}
       <div
         className={`md:hidden bg-black/60 backdrop-blur-md border-b border-terminal-dim overflow-hidden transition-all duration-300 ease-out ${mobileMenuOpen
-          ? 'max-h-96 opacity-100 translate-y-0'
+          ? 'max-h-[500px] opacity-100 translate-y-0'
           : 'max-h-0 opacity-0 -translate-y-4'
           }`}
       >
@@ -168,11 +306,65 @@ const Navbar = () => {
                 </Link>
               );
             })}
+
+            {/* Mobile Sign In / Sign Out */}
+            {isGoogleUser && googleUser ? (
+              <button
+                onClick={() => {
+                  logout();
+                  toast({ title: "Signed Out", description: "You have been signed out." });
+                  setMobileMenuOpen(false);
+                }}
+                className={`transition-all duration-300 ease-out flex items-center space-x-2 py-3 px-4 rounded-lg hover:bg-red-500/20 border border-terminal-dim/30 text-terminal-dim hover:text-red-400 ${mobileMenuOpen
+                  ? 'opacity-100 translate-y-0 scale-100'
+                  : 'opacity-0 translate-y-2 scale-95'
+                  }`}
+                style={{
+                  transitionDelay: mobileMenuOpen ? `${navLinks.length * 30}ms` : '0ms'
+                }}
+              >
+                <LogOut size={18} />
+                <span className="font-medium text-sm">Sign Out</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  handleGoogleSignIn();
+                  setMobileMenuOpen(false);
+                }}
+                className={`transition-all duration-300 ease-out flex items-center space-x-2 py-3 px-4 rounded-lg hover:bg-terminal-dim/20 border border-terminal-dim/30 text-terminal-dim hover:text-terminal-accent ${mobileMenuOpen
+                  ? 'opacity-100 translate-y-0 scale-100'
+                  : 'opacity-0 translate-y-2 scale-95'
+                  }`}
+                style={{
+                  transitionDelay: mobileMenuOpen ? `${navLinks.length * 30}ms` : '0ms'
+                }}
+              >
+                <LogIn size={18} />
+                <span className="font-medium text-sm">Sign In</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
     </>
   );
 };
+
+// Extend Window interface for Google Identity Services
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: any) => void;
+          renderButton: (element: HTMLElement, config: any) => void;
+          prompt: () => void;
+          revoke: (email: string, callback: () => void) => void;
+        };
+      };
+    };
+  }
+}
 
 export default Navbar;

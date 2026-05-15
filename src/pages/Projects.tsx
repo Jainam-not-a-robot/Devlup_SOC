@@ -534,9 +534,9 @@ const Projects = () => {
           <div className="mb-4 sm:mb-6">
             <div className="flex justify-between items-center mb-2 sm:mb-3">
               <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-terminal-text">{selectedTab === 'Ongoing' ? 'Live Projects' : selectedTab === 'Completed' ? 'Completed Projects' : 'Archived Projects'}</h1>
-              <Button onClick={() => setIsSubmitModalOpen(true)} className="bg-terminal-accent text-black hover:bg-terminal-accent/80 flex items-center gap-2">
+              {/* <Button onClick={() => setIsSubmitModalOpen(true)} className="bg-terminal-accent text-black hover:bg-terminal-accent/80 flex items-center gap-2">
                 <Plus size={16} /> Submit Project
-              </Button>
+              </Button> */}
             </div>
             <div className="flex items-center gap-2 flex-wrap mb-2 sm:mb-3">
               {(

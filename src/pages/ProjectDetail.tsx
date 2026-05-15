@@ -26,11 +26,23 @@ const ProjectDetail = () => {
     
     return (
       <div key={`mentor-${index}`} className="border border-terminal-dim p-4 rounded-md">
-        <div className="flex items-center gap-2 mb-2">
-          <User size={18} className="text-terminal-accent" />
-          <h3 className="font-semibold text-terminal-text">{mentor.name}</h3>
+        <div className="flex items-center gap-3 mb-2">
+          {mentor.image_url ? (
+            <img
+              src={mentor.image_url}
+              alt={`${mentor.name} avatar`}
+              className="w-10 h-10 rounded-full object-cover border border-terminal-dim flex-shrink-0"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-full border border-terminal-dim bg-terminal-dim/20 flex items-center justify-center flex-shrink-0">
+              <User size={16} className="text-terminal-accent" />
+            </div>
+          )}
+          <div className="min-w-0">
+            <h3 className="font-semibold text-terminal-text break-words">{mentor.name}</h3>
+            <p className="text-terminal-dim text-sm">{mentor.role}</p>
+          </div>
         </div>
-        <p className="text-terminal-dim text-sm mb-3">{mentor.role}</p>
         
         <div className="space-y-2">
           {mentor.email && (

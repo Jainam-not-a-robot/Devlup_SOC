@@ -180,21 +180,24 @@ export const fetchProjects = async (): Promise<Project[]> => {
           role: item.mentors[0].role || 'Project Mentor',
           email: item.mentors[0].email || undefined,
           linkedin: item.mentors[0].linkedin || undefined,
-          github: item.mentors[0].github || undefined
+          github: item.mentors[0].github || undefined,
+          image_url: item.mentors[0].image_url || undefined
         } : { name: '', role: 'Project Mentor' },
         mentor2: item.mentors && item.mentors.length > 1 ? {
           name: item.mentors[1].name || '',
           role: item.mentors[1].role || 'Project Mentor',
           email: item.mentors[1].email || undefined,
           linkedin: item.mentors[1].linkedin || undefined,
-          github: item.mentors[1].github || undefined
+          github: item.mentors[1].github || undefined,
+          image_url: item.mentors[1].image_url || undefined
         } : undefined,
         mentor3: item.mentors && item.mentors.length > 2 ? {
           name: item.mentors[2].name || '',
           role: item.mentors[2].role || 'Project Mentor',
           email: item.mentors[2].email || undefined,
           linkedin: item.mentors[2].linkedin || undefined,
-          github: item.mentors[2].github || undefined
+          github: item.mentors[2].github || undefined,
+          image_url: item.mentors[2].image_url || undefined
         } : undefined,
         projectDoc: item.docs || '',
         category: item.category || undefined,
@@ -260,21 +263,24 @@ export const fetchProjects = async (): Promise<Project[]> => {
           role: 'Project Mentor',
           email: item['Mentor 1 Email'] || '',
           linkedin: item['Mentor 1 LinkedIn Url'] || undefined,
-          github: item['Mentor 1 Github Url'] || undefined
+          github: item['Mentor 1 Github Url'] || undefined,
+          image_url: item['Mentor 1 Image Url'] || item['Mentor 1 Image'] || item['Mentor 1 Avatar'] || undefined
         },
         mentor2: item['Mentor 2 Name'] ? {
           name: item['Mentor 2 Name'] || '',
           role: 'Project Mentor',
           email: item['Mentor 2 Email'] || '',
           linkedin: item['Mentor 2 LinkedIn Url'] || undefined,
-          github: item['Mentor 2 Github Url'] || undefined
+          github: item['Mentor 2 Github Url'] || undefined,
+          image_url: item['Mentor 2 Image Url'] || item['Mentor 2 Image'] || item['Mentor 2 Avatar'] || undefined
         } : undefined,
         mentor3: item['Mentor 3 Name'] ? {
           name: item['Mentor 3 Name'] || '',
           role: 'Project Mentor',
           email: item['Mentor 3 Email'] || '',
           linkedin: item['Mentor 3 LinkedIn Url'] || undefined,
-          github: item['Mentor 3 Github Url'] || undefined
+          github: item['Mentor 3 Github Url'] || undefined,
+          image_url: item['Mentor 3 Image Url'] || item['Mentor 3 Image'] || item['Mentor 3 Avatar'] || undefined
         } : undefined,
         projectDoc: item['Project Doc'] || '',
         category: item['Category'] ? item['Category'].trim() : undefined,

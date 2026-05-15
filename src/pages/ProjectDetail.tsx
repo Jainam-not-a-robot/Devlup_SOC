@@ -117,11 +117,7 @@ const ProjectDetail = () => {
   const isOngoing = project.status && project.status.toLowerCase() === 'ongoing';
   const rawCategory = project.category?.trim();
   const normalizedCategory = rawCategory?.toLowerCase();
-  const displayCategory = normalizedCategory
-    ? normalizedCategory === 'soc x raid' || normalizedCategory === '1' || normalizedCategory.includes('raid')
-      ? 'SoC X RAID'
-      : rawCategory
-    : '';
+  const displayCategory = normalizedCategory ? rawCategory : '';
   
   // For ongoing projects, show WoC '26
   if (isOngoing) {

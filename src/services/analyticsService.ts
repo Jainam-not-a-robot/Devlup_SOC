@@ -16,6 +16,13 @@ export interface AnalyticsData {
   visitsByHour: Record<string, number>; // Added for hourly distribution
 }
 
+type RawVisitRecord = {
+  page: string;
+  timestamp: string;
+  sessionId: string;
+  referrer?: string;
+};
+
 // Generate a unique session ID for the current visitor
 const generateSessionId = (): string => {
   const randomPart = Math.random().toString(36).substring(2, 15);
@@ -103,16 +110,15 @@ const parseCSVLine = (line: string): string[] => {
   return result;
 };
 
-// Fetch analytics data from Google Sheet or Backend
-export const fetchAnalyticsData = async (): Promise<AnalyticsData | null> => {
+const fetchRawVisitRecords = async (): Promise<RawVisitRecord[] | null> => {
   try {
     const useBackend = import.meta.env.VITE_USE_BACKEND === 'true';
-    let rawVisits: any[] = [];
+    const rawVisits: RawVisitRecord[] = [];
 
     if (useBackend) {
       const backendUrl = import.meta.env.VITE_API_URL;
       const response = await axios.get(`${backendUrl}/stats/visits`);
-      rawVisits = response.data;
+      return Array.isArray(response.data) ? response.data : [];
     } else {
       const csvUrl = import.meta.env.VITE_GOOGLE_SHEETS_CSV_URL || '';
       if (!csvUrl) {
@@ -135,7 +141,56 @@ export const fetchAnalyticsData = async (): Promise<AnalyticsData | null> => {
         });
       }
     }
-    
+
+    return rawVisits;
+  } catch (error) {
+    console.error('Failed to fetch analytics data:', error);
+    return null;
+  }
+};
+
+export const hasSessionVisitedPage = async (
+  page: string,
+  sessionId = getSessionId(),
+): Promise<boolean | null> => {
+  const rawVisits = await fetchRawVisitRecords();
+
+  if (!rawVisits) {
+    return null;
+  }
+
+  const matchingVisits = rawVisits.filter(
+    (visit) => visit.page === page && visit.sessionId === sessionId,
+  );
+
+  if (matchingVisits.length === 0) {
+    return false;
+  }
+
+  if (matchingVisits.length > 1) {
+    return true;
+  }
+
+  const [visit] = matchingVisits;
+  const timestamp = Date.parse(visit.timestamp);
+
+  if (Number.isNaN(timestamp)) {
+    return true;
+  }
+
+  const RECENT_VISIT_WINDOW_MS = 30_000;
+  return Date.now() - timestamp > RECENT_VISIT_WINDOW_MS;
+};
+
+// Fetch analytics data from Google Sheet or Backend
+export const fetchAnalyticsData = async (): Promise<AnalyticsData | null> => {
+  try {
+    const rawVisits = await fetchRawVisitRecords();
+
+    if (!rawVisits) {
+      return null;
+    }
+
     // Parse the analytics data
     const pageVisits: Record<string, number> = {};
     const sessionIds = new Set<string>();

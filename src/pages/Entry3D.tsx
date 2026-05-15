@@ -93,7 +93,8 @@ const DAY_NIGHT_TRANSITION_SPEED = 0.04;
 const ENTRY_QUICK_START_AUTO_HIDE_MS = 8000;
 const MOBILE_TUTORIAL_ROTATION_HINT_MS = 3000;
 const MOBILE_TUTORIAL_GUIDE_MS = 8000;
-const MOBILE_TUTORIAL_STORAGE_KEY = "mobile-tutorial-seen";
+const MOBILE_TUTORIAL_SESSION_KEY = "mobile-tutorial-seen-this-visit";
+const MOBILE_TUTORIAL_LEGACY_STORAGE_KEY = "mobile-tutorial-seen";
 const WINDOW_LIGHT_POSITION: [number, number, number] = [-7.4, 4.9, 4.8];
 const WINDOW_LIGHT_TARGET: [number, number, number] = [0.4, 1.6, -2.4];
 const SUMMER_SUN_LIGHT_POSITION: [number, number, number] = [-3.2, 7.2, 8.8];
@@ -518,13 +519,13 @@ export default function Entry3D() {
       {
         id: "seat",
         label: "Chair",
-        prompt: "Press Enter to sit",
+        prompt: isMobile ? "Tap the chair to sit" : "Press Enter to sit",
         position: ENTRY_SEAT_INTERACTION_POSITION,
         range: ENTRY_INTERACTION_RANGE,
         onInteract: handleSeatInteract,
       },
     ],
-    [handleSeatInteract],
+    [handleSeatInteract, isMobile],
   );
   
   const isSeated = !!seatPosition;
@@ -570,8 +571,8 @@ export default function Entry3D() {
       return {
         id: "seated",
         label: "Seated",
-        message: "to stand up",
-        keys: ["SPACE"],
+        message: isMobile ? "Double-tap to stand up" : "to stand up",
+        keys: isMobile ? undefined : ["SPACE"],
         tone: "action",
         icon: "chair",
       };
@@ -581,8 +582,8 @@ export default function Entry3D() {
       return {
         id: "chair",
         label: "Chair",
-        message: "to sit",
-        keys: ["ENTER"],
+        message: isMobile ? "Tap the chair to sit" : "to sit",
+        keys: isMobile ? undefined : ["ENTER"],
         tone: "interaction",
         icon: "chair",
       };
@@ -594,8 +595,10 @@ export default function Entry3D() {
       hintZones.push({
         id: "lamp",
         label: "Lamp",
-        message: lampSpotEnabled ? "lamp to turn off" : "lamp to turn on",
-        keys: ["CLICK"],
+        message: isMobile
+          ? (lampSpotEnabled ? "Tap the lamp to turn off" : "Tap the lamp to turn on")
+          : (lampSpotEnabled ? "lamp to turn off" : "lamp to turn on"),
+        keys: isMobile ? undefined : ["CLICK"],
         tone: "interaction",
         icon: "lamp",
         position: interactionHintPoints.lamp,
@@ -608,8 +611,8 @@ export default function Entry3D() {
       hintZones.push({
         id: "monitor",
         label: "Monitor",
-        message: "monitor to enter main website",
-        keys: ["CLICK"],
+        message: isMobile ? "Tap the monitor to enter the main website" : "monitor to enter main website",
+        keys: isMobile ? undefined : ["CLICK"],
         tone: "action",
         icon: "monitor",
         position: interactionHintPoints.monitor,
@@ -625,6 +628,7 @@ export default function Entry3D() {
     coordinates.z,
     interactionHintPoints,
     isEntering,
+    isMobile,
     isSeated,
     lampSpotEnabled,
   ]);
@@ -641,29 +645,59 @@ export default function Entry3D() {
 
   /* ── Mobile tutorial: rotation hint (3s) → guide (8s) ── */
   useEffect(() => {
-    if (!isMobile) return;
+    let rotationTimeout: number | null = null;
+    let guideTimeout: number | null = null;
 
-    const hasSeenTutorial = window.localStorage.getItem(
-      MOBILE_TUTORIAL_STORAGE_KEY,
-    ) === "true";
+    const clearTutorialState = () => {
+      setMobileRotationHintVisible(false);
+      setMobileGuideVisible(false);
+    };
 
-    if (hasSeenTutorial) return;
+    if (!isMobile) {
+      clearTutorialState();
+      return;
+    }
 
+    // Clear the old persistent flag so the welcome flow is controlled per website visit.
+    window.localStorage.removeItem(MOBILE_TUTORIAL_LEGACY_STORAGE_KEY);
+
+    const hasSeenTutorialThisVisit =
+      window.sessionStorage.getItem(MOBILE_TUTORIAL_SESSION_KEY) === "true";
+
+    if (hasSeenTutorialThisVisit) {
+      clearTutorialState();
+      return;
+    }
+
+    window.sessionStorage.setItem(MOBILE_TUTORIAL_SESSION_KEY, "true");
     setMobileRotationHintVisible(true);
 
-    const rotationTimeout = window.setTimeout(() => {
+    rotationTimeout = window.setTimeout(() => {
       setMobileRotationHintVisible(false);
       setMobileGuideVisible(true);
 
-      const guideTimeout = window.setTimeout(() => {
+      guideTimeout = window.setTimeout(() => {
         setMobileGuideVisible(false);
-        window.localStorage.setItem(MOBILE_TUTORIAL_STORAGE_KEY, "true");
       }, MOBILE_TUTORIAL_GUIDE_MS);
-
-      return () => window.clearTimeout(guideTimeout);
     }, MOBILE_TUTORIAL_ROTATION_HINT_MS);
 
-    return () => window.clearTimeout(rotationTimeout);
+    const clearTutorialVisitFlag = () => {
+      window.sessionStorage.removeItem(MOBILE_TUTORIAL_SESSION_KEY);
+    };
+
+    window.addEventListener("pagehide", clearTutorialVisitFlag);
+    window.addEventListener("beforeunload", clearTutorialVisitFlag);
+
+    return () => {
+      if (rotationTimeout !== null) {
+        window.clearTimeout(rotationTimeout);
+      }
+      if (guideTimeout !== null) {
+        window.clearTimeout(guideTimeout);
+      }
+      window.removeEventListener("pagehide", clearTutorialVisitFlag);
+      window.removeEventListener("beforeunload", clearTutorialVisitFlag);
+    };
   }, [isMobile]);
 
   /* ── Mobile control callbacks ── */

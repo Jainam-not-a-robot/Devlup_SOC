@@ -127,6 +127,39 @@ const mobileInstructionSections = [
   },
 ] as const;
 
+const mobileInstructionSectionsNormalized = [
+  {
+    id: "movement",
+    title: "Movement",
+    icon: Keyboard,
+    tone: "movement" as const,
+    items: [
+      { keys: ["LEFT"], label: "Use joystick to move" },
+      { keys: ["RIGHT"], label: "Drag right side to look" },
+    ],
+  },
+  {
+    id: "interaction",
+    title: "Interaction",
+    icon: MousePointerClick,
+    tone: "interaction" as const,
+    items: [
+      { keys: ["TAP"], label: "Tap objects to interact" },
+      { keys: ["TAP"], label: "Tap lamp / monitor" },
+    ],
+  },
+  {
+    id: "actions",
+    title: "Actions",
+    icon: Zap,
+    tone: "action" as const,
+    items: [
+      { keys: ["TAP"], label: "Tap chair to sit" },
+      { keys: ["2x", "TAP"], label: "Double-tap to stand" },
+    ],
+  },
+] as const;
+
 export function getNearestEntryHint(
   player: PlayerXZ,
   zones: EntryHintZone[],
@@ -183,7 +216,8 @@ export default function EntryInstructionHUD({
   mobileGuideVisible = false,
 }: EntryInstructionHUDProps) {
   const [displayHint, setDisplayHint] = useState<EntryInstructionHint | null>(activeHint);
-  const activeSections = isMobile ? mobileInstructionSections : instructionSections;
+  const activeSections = isMobile ? mobileInstructionSectionsNormalized : instructionSections;
+  const panelVisible = controlsVisible;
 
   useEffect(() => {
     if (activeHint) {
@@ -211,7 +245,7 @@ export default function EntryInstructionHUD({
             <>
               <li>
                 <span>1</span>
-                Drag left side to walk
+                Use joystick to move
               </li>
               <li>
                 <span>2</span>
@@ -247,8 +281,8 @@ export default function EntryInstructionHUD({
         glowIntensity="xs"
         shadowIntensity="sm"
         borderRadius="16px"
-        className={`entry-hud-panel ${controlsVisible ? "is-visible" : ""}`}
-        aria-hidden={!controlsVisible}
+        className={`entry-hud-panel ${panelVisible ? "is-visible" : ""}`}
+        aria-hidden={!panelVisible}
       >
         <header className="entry-hud-header">
           <div>
@@ -453,10 +487,10 @@ export default function EntryInstructionHUD({
                 }}
               >
                 <h3 style={{ color: "#34d399", marginBottom: "8px", fontSize: "18px", fontWeight: 600 }}>
-                  👆 Drag Left Side to Move
+                  👆 Use Joystick to Move
                 </h3>
                 <p style={{ fontSize: "14px", lineHeight: 1.6 }}>
-                  Use your left thumb to control character movement. Drag in any direction to explore the room.
+                  Use the on-screen joystick with your left thumb to move around and explore the room.
                 </p>
               </div>
 

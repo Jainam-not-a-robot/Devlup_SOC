@@ -157,6 +157,46 @@ const Projects = () => {
       return s === 'completed';
     });
   }, [filteredProjects, selectedTab]);
+  const sortedProjectsForTab = React.useMemo(() => {
+    const getRecommendedRank = (p: any) => {
+      const value = (p.recommended || '').toString().toLowerCase();
+
+      if (value.includes('beginner')) return 0;
+      if (value === 'all') return 1;
+      if (value.includes('tough')) return 2;
+
+      return 3;
+    };
+
+    return projectsForTab.slice().sort((a: any, b: any) => {
+      // 1. Beginner friendly first
+      const recommendedCompare =
+        getRecommendedRank(a) - getRecommendedRank(b);
+
+      if (recommendedCompare !== 0) {
+        return recommendedCompare;
+      }
+
+      const aCategory = (a.category || '').trim().toLowerCase();
+      const bCategory = (b.category || '').trim().toLowerCase();
+
+      // 2. Inter-club projects first
+      if (!!aCategory !== !!bCategory) {
+        return aCategory ? -1 : 1;
+      }
+
+      // 3. Alphabetical category order
+      if (aCategory && bCategory) {
+        const categoryCompare = aCategory.localeCompare(bCategory);
+
+        if (categoryCompare !== 0) {
+          return categoryCompare;
+        }
+      }
+
+      return 0;
+    });
+  }, [projectsForTab]); 
 
   // Small inline preview component for Completed projects (preview-only)
   const InlineSitePreview: React.FC<{ url: string }> = ({ url }) => {
@@ -604,7 +644,7 @@ const Projects = () => {
               </div>
             ) : projectsForTab.length > 0 ? (
               <div className="space-y-4">
-                {projectsForTab.map((project) => {
+                {sortedProjectsForTab.map((project) => {
                   if (selectedTab === 'Archived') {
                     return (
                       <div key={project.id} className="opacity-60 filter grayscale">

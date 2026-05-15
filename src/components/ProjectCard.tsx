@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
+import { useTheme } from './ThemeProvider';
 
 export interface Project {
   id: string;
@@ -47,20 +48,34 @@ interface ProjectCardProps {
 
 const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
   const mentors = [project.mentor, project.mentor2, project.mentor3].filter(Boolean);
+  const { themeId } = useTheme();
   
   // Determine category label and style
   let categoryLabel = '';
-  let categoryClass = 'bg-blue-600/90 text-white dev-badge';
+  const isSummerTheme = themeId === 2;
+  const isOngoing = project.status && project.status.toLowerCase() === 'ongoing';
+  const rawCategory = project.category?.trim();
+  const normalizedCategory = rawCategory?.toLowerCase();
+  const displayCategory = normalizedCategory
+    ? normalizedCategory === 'soc x raid' || normalizedCategory === '1' || normalizedCategory.includes('raid')
+      ? 'SoC X RAID'
+      : rawCategory
+    : '';
   
   // For ongoing projects, show WoC '26
-  if (project.status && project.status.toLowerCase() === 'ongoing') {
-    categoryLabel = "WoC '26";
-  } else if (project.category && (project.category.trim().toLowerCase() === 'soc x raid' || project.category === '1' || project.category.toString().toLowerCase().includes('raid'))) {
-    categoryLabel = 'SoC X RAID';
-    categoryClass = 'bg-blue-600/90 text-white ai-badge';
+  if (isOngoing) {
+    categoryLabel = isSummerTheme ? "SoC '26" : "WoC '26";
   } else {
     categoryLabel = 'Projects Archive';
   }
+
+  const badgeBaseClass = 'mt-1 px-2 py-0.5 rounded text-xs font-semibold border';
+  const badgeThemeClass =
+    themeId === 2
+      ? 'bg-amber-500/20 text-amber-200 border-amber-400/30'
+      : themeId === 1
+        ? 'bg-sky-500/20 text-sky-100 border-sky-400/30'
+        : 'bg-green-500/20 text-green-200 border-green-400/30';
   return (
     <div className="border border-terminal-dim rounded-lg p-3 sm:p-4 hover:border-terminal-accent transition-all group flex flex-col">
       <div className="flex justify-between items-start mb-2 sm:mb-3 gap-2">
@@ -73,9 +88,14 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
           {/* Status badge intentionally not shown on list cards (kept in detail page) */}
           {/* Category badge */}
           {categoryLabel && (
-            <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-semibold ${categoryClass}`}>
-              <span className="relative z-10">{categoryLabel}</span>
-            </span>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <span className={`${badgeBaseClass} ${badgeThemeClass}`}>{categoryLabel}</span>
+              {isOngoing && displayCategory && (
+                <span className={`${badgeBaseClass} ${badgeThemeClass} text-[11px] font-medium`}>
+                  {displayCategory}
+                </span>
+              )}
+            </div>
           )}
         </div>
         {project.recommended && (

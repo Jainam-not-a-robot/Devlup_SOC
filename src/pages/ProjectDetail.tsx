@@ -4,12 +4,14 @@ import { useTerminal } from '../context/TerminalContext';
 import { ArrowLeft, FileText, Github, Linkedin, Mail, ExternalLink, User } from 'lucide-react';
 import TerminalHeader from '../components/TerminalHeader';
 import Footer from '../components/Footer';
+import { useTheme } from '../components/ThemeProvider';
 
 const ProjectDetail = () => {
   const { projectId } = useParams();
   const { projects, loading } = useTerminal();
   const [project, setProject] = useState(null);
   const [detailTab, setDetailTab] = useState<'Overview' | 'Links' | 'Docs' | 'Mentors'>('Overview');
+  const { themeId } = useTheme();
 
   useEffect(() => {
     if (!loading && projects.length > 0) {
@@ -109,33 +111,37 @@ const ProjectDetail = () => {
   // Determine header text and category badge style based on category
   let headerText = `Project: ${project.name}`;
   let categoryLabel = '';
-  let categoryClass = '';
   let footerLabel = undefined; // Default footer text
   let showRaidLogo = false; // Default to not showing RAID logo
+  const isSummerTheme = themeId === 2;
+  const isOngoing = project.status && project.status.toLowerCase() === 'ongoing';
+  const rawCategory = project.category?.trim();
+  const normalizedCategory = rawCategory?.toLowerCase();
+  const displayCategory = normalizedCategory
+    ? normalizedCategory === 'soc x raid' || normalizedCategory === '1' || normalizedCategory.includes('raid')
+      ? 'SoC X RAID'
+      : rawCategory
+    : '';
   
   // For ongoing projects, show WoC '26
-  if (project.status && project.status.toLowerCase() === 'ongoing') {
-    categoryLabel = "WoC '26";
-    categoryClass = 'bg-blue-600/90 text-white dev-badge';
-  } else if (project.category) {
-    // Check if category indicates SoC X RAID (could be '1' or text containing 'raid')
-    if (project.category === '1' || 
-        project.category.toString().toLowerCase().includes('soc x raid') || 
-        project.category.toString().toLowerCase().includes('raid')) {
+  if (isOngoing) {
+    categoryLabel = isSummerTheme ? "SoC '26" : "WoC '26";
+    if (displayCategory === 'SoC X RAID') {
       headerText = `Project: ${project.name} (SoC X RAID)`;
-      categoryLabel = 'SoC X RAID';
-      categoryClass = 'bg-blue-600/90 text-white ai-badge';
-      footerLabel = 'Summer of Code X Summer Of Raid'; // Custom footer text for SoC X RAID
-      showRaidLogo = true; // Show RAID logo in footer
-    } else {
-      categoryLabel = 'Projects Archive';
-      categoryClass = 'bg-blue-600/90 text-white dev-badge';
+      footerLabel = 'Summer of Code X Summer Of Raid';
+      showRaidLogo = true;
     }
   } else {
-    // Default when category is undefined or empty
     categoryLabel = 'Projects Archive';
-    categoryClass = 'bg-blue-600/90 text-white dev-badge';
   }
+
+  const badgeBaseClass = 'inline-block px-2 py-0.5 rounded text-xs font-semibold border';
+  const badgeThemeClass =
+    themeId === 2
+      ? 'bg-amber-500/20 text-amber-200 border-amber-400/30'
+      : themeId === 1
+        ? 'bg-sky-500/20 text-sky-100 border-sky-400/30'
+        : 'bg-green-500/20 text-green-200 border-green-400/30';
 
   return (
     <div className="min-h-screen bg-terminal/95 flex flex-col">
@@ -154,8 +160,13 @@ const ProjectDetail = () => {
                 {/* Category badge */}
                 <div className="flex flex-wrap gap-2 mb-3">
                   {categoryLabel && (
-                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${categoryClass}`}>
+                    <span className={`${badgeBaseClass} ${badgeThemeClass}`}>
                       <span className="relative z-10">{categoryLabel}</span>
+                    </span>
+                  )}
+                  {isOngoing && displayCategory && (
+                    <span className={`${badgeBaseClass} ${badgeThemeClass} text-[11px] font-medium`}>
+                      {displayCategory}
                     </span>
                   )}
                   {/* Industry Mentor badge - only show for ongoing WoC projects */}

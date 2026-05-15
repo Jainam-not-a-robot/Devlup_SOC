@@ -148,7 +148,7 @@ const AppContent = () => {
           }
         />
 
-        {/* <Route path="/apply" element={<ApplyPage />} /> */}
+        <Route path="/apply" element={<ApplyPage />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/stats" element={<Stats />} />
         <Route path="/timeline" element={<Timeline />} />

@@ -14,6 +14,7 @@ export interface Project {
     email: string;
     linkedin?: string;
     github?: string;
+    image_url?: string;
   };
   mentor2?: {
     name: string;
@@ -21,6 +22,7 @@ export interface Project {
     email: string;
     linkedin?: string;
     github?: string;
+    image_url?: string;
   };
   mentor3?: {
     name: string;
@@ -28,6 +30,7 @@ export interface Project {
     email: string;
     linkedin?: string;
     github?: string;
+    image_url?: string;
   };
   projectDoc?: string;
   category?: string; // Add category field
@@ -56,12 +59,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
   const isOngoing = project.status && project.status.toLowerCase() === 'ongoing';
   const rawCategory = project.category?.trim();
   const normalizedCategory = rawCategory?.toLowerCase();
-  const displayCategory = normalizedCategory
-    ? normalizedCategory === 'soc x raid' || normalizedCategory === '1' || normalizedCategory.includes('raid')
-      ? 'SoC X RAID'
-      : rawCategory
-    : '';
-  
+  const displayCategory = normalizedCategory ? rawCategory : '';
   // For ongoing projects, show WoC '26
   if (isOngoing) {
     categoryLabel = isSummerTheme ? "SoC '26" : "WoC '26";
@@ -220,7 +218,20 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {mentors.map((m, i) => (
                     <div key={i} className="border border-dashed border-terminal-dim/50 p-2 rounded hover:border-terminal-accent/50 transition-colors">
-                      <div className="font-semibold text-sm text-terminal-text break-words">{typeof m === 'string' ? m : m.name}</div>
+                      <div className="flex items-center gap-2">
+                        {typeof m !== 'string' && m.image_url ? (
+                          <img
+                            src={m.image_url}
+                            alt={`${m.name || 'Mentor'} avatar`}
+                            className="w-8 h-8 rounded-full object-cover border border-terminal-dim flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full border border-terminal-dim bg-terminal-dim/20 flex items-center justify-center text-[10px] font-semibold text-terminal-text flex-shrink-0">
+                            {typeof m === 'string' ? 'M' : (m.name || 'M').slice(0, 1).toUpperCase()}
+                          </div>
+                        )}
+                        <div className="font-semibold text-sm text-terminal-text break-words">{typeof m === 'string' ? m : m.name}</div>
+                      </div>
                       {typeof m !== 'string' && m.role && <div className="text-terminal-dim text-xs mt-0.5">{m.role}</div>}
                       <div className="mt-1.5 flex flex-wrap gap-2">
                         {typeof m !== 'string' && m.email && <a className="text-terminal-accent text-xs hover:underline" href={`mailto:${m.email}`}>{m.email}</a>}

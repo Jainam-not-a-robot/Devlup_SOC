@@ -19,6 +19,22 @@ apiClient.interceptors.request.use((config) => {
   return Promise.reject(error);
 });
 
+// Add a response interceptor to detect expired tokens (401 Unauthorized)
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (
+      error.response?.status === 401 &&
+      !error.config?.url?.includes('/auth/google') &&
+      !error.config?.url?.includes('/login')
+    ) {
+      // Dispatch a custom event so the UI can show a popup and auto-logout
+      window.dispatchEvent(new CustomEvent('session-expired'));
+    }
+    return Promise.reject(error);
+  }
+);
+
 export interface ApplicationPayload {
   mentee_name: string;
   mentee_roll_number: string;

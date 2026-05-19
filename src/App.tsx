@@ -28,6 +28,7 @@ import Entry3D from "./pages/Entry3D";
 import EntryLoader from "./pages/EntryLoader";
 import LoginModal from "./components/LoginModal";
 import ProtectedRoute from "./components/ProtectedRoute";
+import SessionExpiredPopup from "./components/SessionExpiredPopup";
 import {
   LAST_CONTENT_ROUTE_KEY,
   MONITOR_EMBED_QUERY_KEY,
@@ -183,6 +184,7 @@ const App = () => (
               <ShortcutProvider>
                 <AppContent />
                 <LoginModal />
+                <SessionExpiredPopup />
                 {/* Add analytics tracker to record page visits */}
                 <AnalyticsTracker />
               </ShortcutProvider>

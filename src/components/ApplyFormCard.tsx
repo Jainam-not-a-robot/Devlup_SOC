@@ -43,6 +43,8 @@ const ApplyFormCard = () => {
   // Load deadline, form fields, and check for existing application
   useEffect(() => {
     const load = async () => {
+      setError(null);
+      setSuccessMsg(null);
       try {
         // Fetch deadline from backend
         try {
